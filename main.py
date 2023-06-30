@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QGraphicsScene, QGraphicsView, QGraphicsItem,
-                             QDockWidget, QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
+                             QDockWidget, QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSizePolicy)
 from PyQt5.QtGui import QImage, QPixmap, QColor, QPainter, QPen, QFont, QTransform, QKeySequence, QPalette, QBrush
 from PyQt5.QtCore import Qt, QPoint, QRect
 
@@ -47,12 +47,17 @@ class Window(QWidget):
     def zoomOut(self):
         self.layout.itemAtPosition(1, 1).widget().scale(0.8, 0.8)
 
+    def resizeEvent(self, event):
+        self.layout.itemAtPosition(1, 1).widget().setGeometry(
+            QRect(self.layout.itemAtPosition(0, 1).geometry().topLeft().x(),
+                  self.layout.itemAtPosition(1, 0).geometry().topLeft().y(),
+                  self.layout.itemAtPosition(0, 1).geometry().width(),
+                  self.layout.itemAtPosition(1, 0).geometry().height()))
+
 
 class PreviewWidget(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(800, 600)
-        self.setMaximumSize(3200, 1800)
 
 
 if __name__ == "__main__":
