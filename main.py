@@ -1,6 +1,7 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QGraphicsScene
-from PyQt5.QtGui import QImage, QColor, QPainter, QPen, QFont
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QGraphicsScene, QGraphicsView, QGraphicsItem,
+                             QDockWidget, QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
+from PyQt5.QtGui import QImage, QPixmap, QColor, QPainter, QPen, QFont, QTransform, QKeySequence
 from PyQt5.QtCore import Qt, QPoint
 
 
@@ -10,8 +11,8 @@ class Window(QMainWindow):
         self.setGeometry(0, 0, 1280, 720)
         self.setFont(QFont('Segoe UI', 12))
 
-        self.canvas = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
-        self.canvas.fill(QColor(255, 0, 0, alpha=0))
+        # self.canvas = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
+        # self.canvas.fill(QColor(255, 0, 0, alpha=0))
 
         self.drawing = False
         self.currentLayer = 0
@@ -21,35 +22,46 @@ class Window(QMainWindow):
         self.coords.setText('0 0')
         self.coords.setGeometry(0, 0, 200, 32)
 
-        # print(QPoint(2, 0) + QPoint(1, 20))
-        print(self.pos().x(), self.pos().y())
+        self.layerList = QListWidget(self)
 
-    def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.LeftButton:
-            self.drawing = True
-            self.lastMousePos = event.pos()
+        self.newBitmapLayer = QPushButton(self)
+        self.newBitmapLayer.setText('Новый растровый слой')
 
-    def mouseMoveEvent(self, event) -> None:
-        if event.buttons() & Qt.LeftButton & self.drawing:
-            self.coords.setText(f'{self.lastMousePos.x()} {self.lastMousePos.y()} {event.pos().x()} {event.pos().y()}')
+        self.preview = PreviewWindow(self)
+        self.preview.show()
 
-            painter = QPainter(self.canvas)
-            painter.setPen(QPen(QColor(0, 0, 0), 10, Qt.SolidLine, Qt.RoundCap, Qt.BevelJoin))
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.layout.addWidget(self.newBitmapLayer, 0, 0)
+        self.layout.addWidget(self.layerList, 0, 1)
+        self.layout.addWidget(self.preview, 0, 2)
 
-            painter.drawLine(self.lastMousePos, event.pos())
-            self.lastMousePos = event.pos()
-
-            self.update()
-
-    def mouseReleaseEvent(self, event) -> None:
-        if event.button == Qt.LeftButton:
-            self.drawing = False
-
-    def paintEvent(self, event):
-        canvasPainter = QPainter(self)
-        canvasPainter.drawImage(self.rect(), self.canvas)
+        self.show()
 
 
+class PreviewWindow(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setGeometry(10, 10, 800, 600)
+
+        self.scene = QGraphicsScene(self)
+        self.view = QGraphicsView(self)
+        self.view.setScene(self.scene)
+        # self.view.show()
+
+        self.scene.addPixmap(QPixmap('checkerboard.png'))
+
+        self.zoomInShortcut = QShortcut(QKeySequence('Ctrl+='), self)
+        self.zoomInShortcut.activated.connect(self.zoomIn)
+
+        self.zoomOutShortcut = QShortcut(QKeySequence('Ctrl+-'), self)
+        self.zoomOutShortcut.activated.connect(self.zoomOut)
+
+    def zoomIn(self):
+        self.view.scale(1.25, 1.25)
+
+    def zoomOut(self):
+        self.view.scale(0.8, 0.8)
 
 
 if __name__ == "__main__":
