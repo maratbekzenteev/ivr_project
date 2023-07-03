@@ -1,24 +1,20 @@
 import sys
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QGraphicsScene, QGraphicsView, QGraphicsItem,
-                             QDockWidget, QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSizePolicy)
-from PyQt5.QtGui import QImage, QPixmap, QColor, QPainter, QPen, QFont, QTransform, QKeySequence, QPalette, QBrush
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView,
+                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
+from PyQt5.QtGui import QPixmap, QFont, QKeySequence
+from PyQt5.QtCore import Qt, QRect
+from bitmap_layer import BitmapLayer
 
 
 class Window(QWidget):
     def __init__(self):
         super().__init__()
         self.setFont(QFont('Segoe UI', 12))
-        #  pal = self.palette()
-        #  pal.setBrush(QPalette.Window, QBrush(QColor(0, 255, 255), Qt.SolidPattern))
-        #  self.setPalette(pal)
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
         self.currentLayer = 0
-        # Будет перемещена в кастомный виджет растрового слоя
-        # self.lastMousePos = QPoint(0, 0)
         self.resolution = 1280, 720
 
         self.layout.addWidget(QPushButton("Новый растровый слой", self), 0, 0)
@@ -62,49 +58,6 @@ class Window(QWidget):
 class PreviewWidget(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-
-class BitmapLayer(QWidget):
-    def __init__(self, width, height):
-        super().__init__()
-
-        self.setMinimumSize(width, height)
-        self.setMaximumSize(width, height)
-        self.resolution = width, height
-
-        self.bitmap = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
-        self.bitmap.fill(QColor(0, 0, 0, alpha=0))
-
-        self.active = False
-        self.drawing = False
-        self.lastMousePos = QPoint(0, 0)
-
-        pal = self.palette()
-        pal.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=128), Qt.SolidPattern))
-        self.setPalette(pal)
-
-    def paintEvent(self, event):
-        qp = QPainter(self)
-        qp.drawImage(0, 0, self.bitmap)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.drawing = True
-            self.lastMousePos = event.pos()
-
-    def mouseMoveEvent(self, event):
-        if event.buttons() & Qt.LeftButton & self.drawing:
-            qp = QPainter(self.bitmap)
-            qp.setPen(QPen(QColor(0, 0, 0), 10, Qt.SolidLine, Qt.RoundCap, Qt.BevelJoin))
-
-            qp.drawLine(self.lastMousePos, event.pos())
-            self.lastMousePos = event.pos()
-
-            self.update()
-
-    def mouseReleaseEvent(self, event):
-        if event.button == Qt.LeftButton:
-            self.drawing = False
 
 
 if __name__ == "__main__":
