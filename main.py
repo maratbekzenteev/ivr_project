@@ -17,13 +17,17 @@ class Window(QWidget):
         self.currentLayer = 0
         self.resolution = 1280, 720
 
-        self.layout.addWidget(QPushButton("Новый растровый слой", self), 0, 0)
-        self.layout.addWidget(QListWidget(), 1, 0)
-        self.layout.addWidget(PreviewWidget(self), 1, 1, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.newBitmapLayerButton = QPushButton("Новый растровый слой")
+        self.layerList = QListWidget()
+        self.preview = PreviewWidget(self)
+
+        self.layout.addWidget(self.newBitmapLayerButton, 0, 0)
+        self.layout.addWidget(self.layerList, 1, 0)
+        self.layout.addWidget(self.preview, 1, 1, alignment=Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(QPushButton('3'), 0, 1)
         self.layout.setColumnStretch(1, 1)
 
-        self.layout.itemAtPosition(0, 0).widget().clicked.connect(self.newBitmapLayer)
+        self.newBitmapLayerButton.clicked.connect(self.newBitmapLayer)
 
         self.zoomInShortcut = QShortcut(QKeySequence('Ctrl+='), self)
         self.zoomInShortcut.activated.connect(self.zoomIn)
@@ -33,15 +37,15 @@ class Window(QWidget):
 
         self.scene = QGraphicsScene(self)
         self.scene.addPixmap(QPixmap('checkerboard.png').scaled(*self.resolution, aspectRatioMode=Qt.IgnoreAspectRatio))
-        self.layout.itemAtPosition(1, 1).widget().setScene(self.scene)
+        self.preview.setScene(self.scene)
 
         self.show()
 
     def zoomIn(self):
-        self.layout.itemAtPosition(1, 1).widget().scale(1.25, 1.25)
+        self.preview.scale(1.25, 1.25)
 
     def zoomOut(self):
-        self.layout.itemAtPosition(1, 1).widget().scale(0.8, 0.8)
+        self.preview.scale(0.8, 0.8)
 
     def resizeEvent(self, event):
         self.layout.itemAtPosition(1, 1).widget().setGeometry(
@@ -52,7 +56,7 @@ class Window(QWidget):
 
     def newBitmapLayer(self):
         self.scene.addWidget(BitmapLayer(*self.resolution))
-        self.layout.itemAtPosition(1, 0).widget().addItem('Новый растровый слой')
+        self.layerList.addItem('Новый растровый слой')
 
 
 class PreviewWidget(QGraphicsView):
