@@ -22,7 +22,7 @@ class Window(QWidget):
         self.currentLayer = 0
         # Будет перемещена в кастомный виджет растрового слоя
         # self.lastMousePos = QPoint(0, 0)
-        self.resolution = 720, 720
+        self.resolution = 1280, 720
 
         self.layout.addWidget(QPushButton("Новый растровый слой", self), 0, 0)
         self.layout.addWidget(QListWidget(), 1, 0)
@@ -73,6 +73,8 @@ class BitmapLayer(QWidget):
         self.setMinimumSize(width, height)
         self.setMaximumSize(width, height)
         self.resolution = width, height
+        self.bitmap = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
+        self.bitmap.fill(QColor(0, 0, 0, alpha=0))
         self.active = False
 
         pal = self.palette()
@@ -81,10 +83,7 @@ class BitmapLayer(QWidget):
 
     def paintEvent(self, event):
         qp = QPainter(self)
-        qp.setPen(Qt.blue)
-        qp.setBrush(QBrush(QColor(255, 0, 0), Qt.SolidPattern))
-        qp.drawLine(0, 0, *self.resolution)
-        qp.drawLine(0, self.resolution[1], self.resolution[0], 0)
+        qp.drawImage(0, 0, self.bitmap)
 
 
 if __name__ == "__main__":
