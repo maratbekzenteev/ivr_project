@@ -2,9 +2,12 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QImage, QColor, QPainter, QPen, QPalette, QBrush
 from PyQt5.QtCore import Qt, QPoint
 
+
 class BitmapLayer(QWidget):
-    def __init__(self, width, height):
+    def __init__(self, width, height, parent):
         super().__init__()
+
+        self.parent = parent
 
         self.setMinimumSize(width, height)
         self.setMaximumSize(width, height)
@@ -17,8 +20,10 @@ class BitmapLayer(QWidget):
         self.drawing = False
         self.lastMousePos = QPoint(0, 0)
 
+        self.pen = QPen(QColor(0, 0, 0), 10, Qt.SolidLine, Qt.RoundCap, Qt.BevelJoin)
+
         pal = self.palette()
-        pal.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=128), Qt.SolidPattern))
+        pal.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
         self.setPalette(pal)
 
     def paintEvent(self, event):
@@ -26,20 +31,32 @@ class BitmapLayer(QWidget):
         qp.drawImage(0, 0, self.bitmap)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.drawing = True
-            self.lastMousePos = event.pos()
+        if not self.active:
+            self.parent.scene.items()[self.parent.currentLayer + 1].widget().mousePressEvent(event)
+        else:
+            if event.button() == Qt.LeftButton and self.active:
+                self.drawing = True
+                self.lastMousePos = event.pos()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() & Qt.LeftButton & self.drawing:
-            qp = QPainter(self.bitmap)
-            qp.setPen(QPen(QColor(0, 0, 0), 10, Qt.SolidLine, Qt.RoundCap, Qt.BevelJoin))
+        if not self.active:
+            self.parent.scene.items()[self.parent.currentLayer + 1].widget().mouseMoveEvent(event)
+        else:
+            if event.buttons() & Qt.LeftButton & self.drawing & self.active:
+                qp = QPainter(self.bitmap)
+                qp.setPen(self.pen)
 
-            qp.drawLine(self.lastMousePos, event.pos())
-            self.lastMousePos = event.pos()
+                qp.drawLine(self.lastMousePos, event.pos())
+                self.lastMousePos = event.pos()
 
-            self.update()
+                self.update()
 
     def mouseReleaseEvent(self, event):
         if event.button == Qt.LeftButton:
-            self.drawing = False
+            if self.active:
+                self.drawing = False
+            else:
+                self.parent.scene.items()[self.parent.currentLayer + 1].widget().drawing = False
+
+    def updateState(self, color):
+        self.pen.setColor(color)

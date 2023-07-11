@@ -1,42 +1,53 @@
 import sys
-from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView,
+from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel,
                              QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
-from PyQt5.QtGui import QPixmap, QFont, QKeySequence
+from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect
 from bitmap_layer import BitmapLayer
+from gui_classes import BitmapToolbar
 
 
 class Window(QWidget):
     def __init__(self):
         super().__init__()
-        self.setFont(QFont('Segoe UI', 12))
+        self.setFont(QFont("Segoe UI", 12))
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        self.currentLayer = 0
+        self.currentLayer = -1
+        self.highestZ = 0
         self.resolution = 1280, 720
 
         self.newBitmapLayerButton = QPushButton("Новый растровый слой")
-        self.layerList = QListWidget()
-        self.preview = PreviewWidget(self)
+        self.layerList = QListWidget(self)
+        self.preview = QGraphicsView(self)
+        self.tab = QTabWidget(self)
+
+        self.tab.addTab(BitmapToolbar(), "Рисование")
+        self.tab.widget(0).red.valueChanged.connect(self.updateLayerState)
+        self.tab.widget(0).green.valueChanged.connect(self.updateLayerState)
+        self.tab.widget(0).blue.valueChanged.connect(self.updateLayerState)
+
+        self.layerList.currentItemChanged.connect(self.setCurrentLayer)
 
         self.layout.addWidget(self.newBitmapLayerButton, 0, 0)
         self.layout.addWidget(self.layerList, 1, 0)
         self.layout.addWidget(self.preview, 1, 1, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(QPushButton('3'), 0, 1)
+        self.layout.addWidget(self.tab, 0, 1)
         self.layout.setColumnStretch(1, 1)
 
         self.newBitmapLayerButton.clicked.connect(self.newBitmapLayer)
 
-        self.zoomInShortcut = QShortcut(QKeySequence('Ctrl+='), self)
+        self.zoomInShortcut = QShortcut(QKeySequence("Ctrl+="), self)
         self.zoomInShortcut.activated.connect(self.zoomIn)
 
-        self.zoomOutShortcut = QShortcut(QKeySequence('Ctrl+-'), self)
+        self.zoomOutShortcut = QShortcut(QKeySequence("Ctrl+-"), self)
         self.zoomOutShortcut.activated.connect(self.zoomOut)
 
         self.scene = QGraphicsScene(self)
-        self.scene.addPixmap(QPixmap('checkerboard.png').scaled(*self.resolution, aspectRatioMode=Qt.IgnoreAspectRatio))
+        self.scene.setItemIndexMethod(-1)
+        self.scene.addPixmap(QPixmap("checkerboard.png").scaled(*self.resolution, aspectRatioMode=Qt.IgnoreAspectRatio))
         self.preview.setScene(self.scene)
 
         self.show()
@@ -55,13 +66,24 @@ class Window(QWidget):
                   self.layout.itemAtPosition(1, 0).geometry().height()))
 
     def newBitmapLayer(self):
-        self.scene.addWidget(BitmapLayer(*self.resolution))
-        self.layerList.addItem('Новый растровый слой')
+        self.highestZ += 1
+        self.scene.addWidget(BitmapLayer(*self.resolution, self))
+        self.scene.items()[-1].setZValue(self.highestZ)
+        self.layerList.addItem("Новый растровый слой")
 
+    def updateLayerState(self):
+        self.scene.items()[self.currentLayer + 1].widget().updateState(QColor(self.tab.widget(0).red.value(),
+                                                                              self.tab.widget(0).green.value(),
+                                                                              self.tab.widget(0).blue.value()))
 
-class PreviewWidget(QGraphicsView):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def setCurrentLayer(self):
+        if self.currentLayer != -1:
+            self.scene.items()[self.currentLayer + 1].widget().active = False
+
+        self.currentLayer = self.layerList.currentRow()
+        self.preview.currentLayer = self.currentLayer
+        self.scene.items()[self.currentLayer + 1].widget().active = True
+        self.updateLayerState()
 
 
 if __name__ == "__main__":
