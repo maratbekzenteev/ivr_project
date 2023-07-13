@@ -25,9 +25,7 @@ class Window(QWidget):
         self.tab = QTabWidget(self)
 
         self.tab.addTab(BitmapToolbar(), "Рисование")
-        self.tab.widget(0).red.valueChanged.connect(self.updateLayerState)
-        self.tab.widget(0).green.valueChanged.connect(self.updateLayerState)
-        self.tab.widget(0).blue.valueChanged.connect(self.updateLayerState)
+        self.tab.widget(0).signals.valueChanged.connect(self.updateLayerState)
 
         self.layerList.currentItemChanged.connect(self.setCurrentLayer)
 
@@ -72,9 +70,7 @@ class Window(QWidget):
         self.layerList.addItem("Новый растровый слой")
 
     def updateLayerState(self):
-        self.scene.items()[self.currentLayer + 1].widget().updateState(QColor(self.tab.widget(0).red.value(),
-                                                                              self.tab.widget(0).green.value(),
-                                                                              self.tab.widget(0).blue.value()))
+        self.scene.items()[self.currentLayer + 1].widget().updateState(self.tab.widget(0).color)
 
     def setCurrentLayer(self):
         if self.currentLayer != -1:

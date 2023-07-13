@@ -22,9 +22,9 @@ class BitmapLayer(QWidget):
 
         self.pen = QPen(QColor(0, 0, 0), 10, Qt.SolidLine, Qt.RoundCap, Qt.BevelJoin)
 
-        pal = self.palette()
-        pal.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
-        self.setPalette(pal)
+        palette = self.palette()
+        palette.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
+        self.setPalette(palette)
 
     def paintEvent(self, event):
         qp = QPainter(self)
