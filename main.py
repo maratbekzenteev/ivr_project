@@ -70,7 +70,10 @@ class Window(QWidget):
         self.layerList.addItem("Новый растровый слой")
 
     def updateLayerState(self):
-        self.scene.items()[self.currentLayer + 1].widget().updateState(self.tab.widget(0).color)
+        if self.currentLayer != -1:
+            self.scene.items()[self.currentLayer + 1].widget().updateState(self.tab.widget(0).color,
+                                                                           self.tab.widget(0).width,
+                                                                           self.tab.widget(0).tool)
 
     def setCurrentLayer(self):
         if self.currentLayer != -1:
