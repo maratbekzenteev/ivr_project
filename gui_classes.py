@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel, QToolButton,
-                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider)
+                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider, QColorDialog)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QPalette, QBrush, QColor, QPainter, QPen, QIcon
 from PyQt5.QtCore import Qt, QRect, pyqtSignal, QObject, QSize
 from colorsys import hsv_to_rgb, rgb_to_hsv
@@ -21,6 +21,9 @@ class BitmapToolbar(QWidget):
         self.color = QColor(0, 0, 0)
         self.colorPicker = ColorPicker()
         self.colorPicker.signals.valueChanged.connect(self.updateValues)
+        self.colorPreview = ColorPreview()
+        self.colorPreview.signals.valueChanged.connect(self.updateValues)
+
 
         self.width = 1
         self.widthSlider = QSlider()
@@ -35,12 +38,19 @@ class BitmapToolbar(QWidget):
         self.toolSelector.signals.valueChanged.connect(self.updateValues)
 
         self.layout.addWidget(self.colorPicker, 0, 0)
-        self.layout.addWidget(self.widthSlider, 0, 1)
-        self.layout.addWidget(WidthPictogram(), 0, 2)
-        self.layout.addWidget(self.toolSelector, 0, 3)
+        self.layout.addWidget(self.colorPreview, 0, 1)
+        self.layout.addWidget(self.widthSlider, 0, 2)
+        self.layout.addWidget(WidthPictogram(), 0, 3)
+        self.layout.addWidget(self.toolSelector, 0, 4)
 
     def updateValues(self):
-        self.color = self.colorPicker.color
+        if self.colorPreview.color != self.color:
+            self.color = self.colorPreview.color
+            self.colorPicker.setColor(self.color)
+        elif self.colorPicker.color != self.color:
+            self.color = self.colorPicker.color
+            self.colorPreview.updateState(self.color)
+
         self.width = self.widthSlider.value()
         self.tool = self.toolSelector.state
         self.signals.valueChanged.emit()
@@ -64,9 +74,12 @@ class ColorPicker(QWidget):
                 for blue in range(5):
                     self.layout.addWidget(
                         ColoredButton(QColor(min(255, red * 64), min(255, green * 64), min(255, blue * 64))),
-                        red, green * 4 + blue
+                        red, green * 5 + blue
                     )
-                    self.layout.itemAtPosition(red, green * 4 + blue).widget().clicked.connect(self.updateColor)
+                    self.layout.itemAtPosition(red, green * 5 + blue).widget().clicked.connect(self.updateColor)
+
+    def setColor(self, color):
+        self.color = color
 
     def updateColor(self):
         self.color = self.sender().color
@@ -88,6 +101,50 @@ class ColoredButton(QPushButton):
         self.setAutoFillBackground(True)
         self.setPalette(palette)
         self.repaint()
+
+    def updateState(self, color):
+        palette = self.palette()
+        palette.setColor(QPalette.Button, color)
+        self.setPalette(palette)
+        self.repaint()
+
+
+class ColorPreview(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.layout = QGridLayout(self)
+        self.layout.setSpacing(0)
+        self.setLayout(self.layout)
+
+        self.signals = Signals()
+
+        self.color = QColor(0, 0, 0)
+        self.colorButton = ColoredButton(QColor(0, 0, 0))
+
+        self.colorDialog = QColorDialog()
+        self.colorDialog.setOption(QColorDialog.ShowAlphaChannel, on=True)
+        self.colorDialog.colorSelected.connect(self.chooseColor)
+
+        self.chooseColorButton = QPushButton('Другой цвет')
+        self.chooseColorButton.clicked.connect(self.showDialog)
+
+        self.layout.addWidget(self.colorButton, 0, 0)
+        self.layout.addWidget(self.chooseColorButton, 1, 0)
+
+    def showDialog(self):
+        self.colorDialog.show()
+        self.colorDialog.setCurrentColor(self.color)
+
+    def chooseColor(self):
+        self.color = self.colorDialog.selectedColor()
+        self.colorButton.updateState(self.color)
+
+        self.signals.valueChanged.emit()
+
+    def updateState(self, color):
+        self.color = color
+        self.colorButton.updateState(color)
 
 
 class WidthPictogram(QWidget):

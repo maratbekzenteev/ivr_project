@@ -56,12 +56,12 @@ class Window(QWidget):
     def zoomOut(self):
         self.preview.scale(0.8, 0.8)
 
-    def resizeEvent(self, event):
-        self.layout.itemAtPosition(1, 1).widget().setGeometry(
-            QRect(self.layout.itemAtPosition(0, 1).geometry().topLeft().x(),
-                  self.layout.itemAtPosition(1, 0).geometry().topLeft().y(),
-                  self.layout.itemAtPosition(0, 1).geometry().width(),
-                  self.layout.itemAtPosition(1, 0).geometry().height()))
+    # def resizeEvent(self, event):
+    #     self.layout.itemAtPosition(1, 1).widget().setGeometry(
+    #         QRect(self.layout.itemAtPosition(0, 1).geometry().topLeft().x(),
+    #               self.layout.itemAtPosition(1, 0).geometry().topLeft().y(),
+    #               self.layout.itemAtPosition(0, 1).geometry().width(),
+    #               self.layout.itemAtPosition(1, 0).geometry().height()))
 
     def newBitmapLayer(self):
         self.highestZ += 1
