@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWi
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect
 from bitmap_layer import BitmapLayer
+from background_layer import BackgroundLayer
 from gui_classes import BitmapToolbar
 
 
@@ -45,7 +46,7 @@ class Window(QWidget):
 
         self.scene = QGraphicsScene(self)
         self.scene.setItemIndexMethod(-1)
-        self.scene.addPixmap(QPixmap("checkerboard.png").scaled(*self.resolution, aspectRatioMode=Qt.IgnoreAspectRatio))
+        self.scene.addWidget(BackgroundLayer(*self.resolution))
         self.preview.setScene(self.scene)
 
         self.show()
