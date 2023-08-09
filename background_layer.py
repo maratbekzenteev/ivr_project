@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPixmap, QPainter, QPalette
+from PyQt5.QtGui import QPixmap, QPainter
 from PyQt5.QtCore import Qt
 
 

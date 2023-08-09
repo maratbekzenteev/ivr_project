@@ -5,7 +5,7 @@ from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect
 from bitmap_layer import BitmapLayer
 from background_layer import BackgroundLayer
-from gui_classes import BitmapToolbar
+from gui_classes import BitmapToolbar, LayerToolbar, LayerList
 
 
 class Window(QWidget):
@@ -20,23 +20,27 @@ class Window(QWidget):
         self.highestZ = 0
         self.resolution = 1280, 720
 
-        self.newBitmapLayerButton = QPushButton("Новый растровый слой")
         self.layerList = QListWidget(self)
+        self.layers = LayerList(self)
         self.preview = QGraphicsView(self)
         self.tab = QTabWidget(self)
 
         self.tab.addTab(BitmapToolbar(), "Рисование")
         self.tab.widget(0).signals.valueChanged.connect(self.updateLayerState)
 
+        self.tab.addTab(LayerToolbar(), "Слои")
+        self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.newBitmapLayer)
+
         self.layerList.currentItemChanged.connect(self.setCurrentLayer)
+        self.layers.signals.activated.connect(self.activateLayer)
+        self.layers.signals.deactivated.connect(self.deactivateLayer)
+        self.layers.signals.shown.connect(self.showLayer)
+        self.layers.signals.hidden.connect(self.hideLayer)
 
-        self.layout.addWidget(self.newBitmapLayerButton, 0, 0)
-        self.layout.addWidget(self.layerList, 1, 0)
-        self.layout.addWidget(self.preview, 1, 1, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(self.tab, 0, 1)
+        self.layout.addWidget(self.layers, 1, 0)
+        self.layout.addWidget(self.preview, 1, 1, alignment=Qt.AlignCenter)
+        self.layout.addWidget(self.tab, 0, 0, 1, 2, Qt.AlignTop)
         self.layout.setColumnStretch(1, 1)
-
-        self.newBitmapLayerButton.clicked.connect(self.newBitmapLayer)
 
         self.zoomInShortcut = QShortcut(QKeySequence("Ctrl+="), self)
         self.zoomInShortcut.activated.connect(self.zoomIn)
@@ -69,6 +73,7 @@ class Window(QWidget):
         self.scene.addWidget(BitmapLayer(*self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layerList.addItem("Новый растровый слой")
+        self.layers.newBitmapLayer()
 
     def updateLayerState(self):
         if self.currentLayer != -1:
@@ -84,6 +89,23 @@ class Window(QWidget):
         self.preview.currentLayer = self.currentLayer
         self.scene.items()[self.currentLayer + 1].widget().active = True
         self.updateLayerState()
+
+    def activateLayer(self, index):
+        if self.currentLayer != -1:
+            self.scene.items()[self.currentLayer + 1].widget().active = False
+        self.scene.items()[index + 1].widget().active = True
+        self.currentLayer = index
+        self.updateLayerState()
+
+    def deactivateLayer(self, index):
+        self.scene.items()[index + 1].widget().active = False
+        self.currentLayer = -1
+
+    def showLayer(self, index):
+        self.scene.items()[index + 1].widget().show()
+
+    def hideLayer(self, index):
+        self.scene.items()[index + 1].widget().hide()
 
 
 if __name__ == "__main__":

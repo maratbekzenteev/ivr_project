@@ -1,5 +1,6 @@
-from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel, QToolButton,
-                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider, QColorDialog)
+from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel, QToolButton, QVBoxLayout,
+                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider, QColorDialog,
+                             QLineEdit)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QPalette, QBrush, QColor, QPainter, QPen, QIcon
 from PyQt5.QtCore import Qt, QRect, pyqtSignal, QObject, QSize
 from colorsys import hsv_to_rgb, rgb_to_hsv
@@ -7,6 +8,10 @@ from colorsys import hsv_to_rgb, rgb_to_hsv
 
 class Signals(QObject):
     valueChanged = pyqtSignal()
+    activated = pyqtSignal(int)
+    deactivated = pyqtSignal(int)
+    shown = pyqtSignal(int)
+    hidden = pyqtSignal(int)
 
 
 class BitmapToolbar(QWidget):
@@ -23,7 +28,6 @@ class BitmapToolbar(QWidget):
         self.colorPicker.signals.valueChanged.connect(self.updateValues)
         self.colorPreview = ColorPreview()
         self.colorPreview.signals.valueChanged.connect(self.updateValues)
-
 
         self.width = 1
         self.widthSlider = QSlider()
@@ -204,3 +208,148 @@ class ToolSelector(QWidget):
             self.state = 'none'
 
         self.signals.valueChanged.emit()
+
+
+class LayerToolbar(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.layout = QGridLayout(self)
+        self.setLayout(self.layout)
+
+        self.signals = Signals()
+
+        self.newBitmapLayerButton = QToolButton()
+        self.newBitmapLayerButton.setText('Новый растровый слой')
+        self.newBitmapLayerButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.newBitmapLayerButton.setAutoRaise(True)
+        self.newBitmapLayerButton.setIconSize(QSize(64, 64))
+        self.newBitmapLayerButton.setIcon(QIcon('tmp_icon.png'))
+
+        self.newShapeLayerButton = QToolButton()
+        self.newShapeLayerButton.setText('Новый фигурный слой')
+        self.newShapeLayerButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.newShapeLayerButton.setAutoRaise(True)
+        self.newShapeLayerButton.setIconSize(QSize(64, 64))
+        self.newShapeLayerButton.setIcon(QIcon('tmp_icon.png'))
+
+        self.layout.addWidget(self.newBitmapLayerButton, 0, 0, alignment=Qt.AlignLeft)
+        self.layout.addWidget(self.newShapeLayerButton, 1, 0, alignment=Qt.AlignLeft)
+
+
+class LayerListItem(QWidget):
+    def __init__(self, name, type, z, index):
+        super().__init__()
+
+        self.layout = QGridLayout(self)
+        self.layout.setSpacing(0)
+        self.setLayout(self.layout)
+
+        self.signals = Signals()
+
+        self.z = z
+        self.index = index
+        self.visible = True
+        self.active = False
+
+        self.activateButton = QPushButton('⌘')
+        self.activateButton.clicked.connect(self.activate)
+
+        self.nameField = QLineEdit(name)
+
+        self.upButton = QPushButton('Выше')
+
+        self.downButton = QPushButton('Ниже')
+
+        self.hideButton = QPushButton('Глаз')
+        self.hideButton.clicked.connect(self.changeVisibility)
+
+        self.layout.addWidget(self.activateButton, 0, 0, 2, 1, Qt.AlignLeft)
+        self.layout.addWidget(self.nameField, 0, 1, 1, 3, Qt.AlignCenter)
+        self.layout.addWidget(self.upButton, 1, 1)
+        self.layout.addWidget(self.downButton, 1, 2)
+        self.layout.addWidget(self.hideButton, 1, 3)
+
+        self.setAutoFillBackground(True)
+        palette = self.palette()
+        palette.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
+        self.setPalette(palette)
+
+    def updatePalette(self):
+        palette = self.palette()
+        palette.setBrush(QPalette.Window, QBrush(QColor(
+            0, 0, 255, alpha=64) if self.active else QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
+        palette.setBrush(QPalette.Text, QBrush(QColor(
+            0, 0, 0) if self.visible else QColor(0, 0, 0, alpha=128), Qt.SolidPattern))
+        self.setPalette(palette)
+
+    def activate(self):
+        if self.active:
+            self.signals.deactivated.emit(self.index)
+            self.active = False
+        else:
+            self.signals.activated.emit(self.index)
+            self.active = True
+
+        self.updatePalette()
+
+    def changeVisibility(self):
+        if self.visible:
+            self.signals.hidden.emit(self.index)
+            self.visible = False
+        else:
+            self.signals.shown.emit(self.index)
+            self.visible = True
+
+        self.updatePalette()
+
+
+class LayerList(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setDirection(QVBoxLayout.BottomToTop)
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.layout.setSpacing(0)
+        self.setLayout(self.layout)
+
+        self.signals = Signals()
+
+        self.highestZ = 0
+        self.layerCount = 0
+
+        self.setAutoFillBackground(True)
+        palette = self.palette()
+        palette.setBrush(QPalette.Window, QBrush(QColor(255, 255, 255), Qt.SolidPattern))
+        self.setPalette(palette)
+
+    def newBitmapLayer(self):
+        self.layerCount += 1
+        self.layout.addWidget(LayerListItem(
+            'Растровый слой ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.highestZ))
+        self.layout.itemAt(self.layerCount - 1).widget().signals.activated.connect(self.activateLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().signals.deactivated.connect(self.deactivateLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().signals.shown.connect(self.showLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().signals.hidden.connect(self.hideLayer)
+        self.highestZ += 1
+
+    def activateLayer(self, index):
+        for i in range(self.layerCount):
+            self.layout.itemAt(i).widget().active = False
+            self.layout.itemAt(i).widget().updatePalette()
+
+        self.signals.activated.emit(index)
+
+    def deactivateLayer(self, index):
+        for i in range(self.layerCount):
+            self.layout.itemAt(i).widget().active = False
+            self.layout.itemAt(i).widget().updatePalette()
+
+        self.signals.deactivated.emit(index)
+
+    def showLayer(self, index):
+        self.signals.shown.emit(index)
+
+    def hideLayer(self, index):
+        self.signals.hidden.emit(index)
