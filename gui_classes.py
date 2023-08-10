@@ -8,10 +8,16 @@ from colorsys import hsv_to_rgb, rgb_to_hsv
 
 class Signals(QObject):
     valueChanged = pyqtSignal()
+
+
+class LayerSignals(QObject):
     activated = pyqtSignal(int)
     deactivated = pyqtSignal(int)
     shown = pyqtSignal(int)
     hidden = pyqtSignal(int)
+    movedUp = pyqtSignal(int)
+    movedDown = pyqtSignal(int)
+    swappedLayers = pyqtSignal(int, int)
 
 
 class BitmapToolbar(QWidget):
@@ -245,10 +251,11 @@ class LayerListItem(QWidget):
         self.layout.setSpacing(0)
         self.setLayout(self.layout)
 
-        self.signals = Signals()
+        self.signals = LayerSignals()
 
         self.z = z
         self.index = index
+        self.type = type
         self.visible = True
         self.active = False
 
@@ -258,8 +265,10 @@ class LayerListItem(QWidget):
         self.nameField = QLineEdit(name)
 
         self.upButton = QPushButton('Выше')
+        self.upButton.clicked.connect(self.moveUp)
 
         self.downButton = QPushButton('Ниже')
+        self.downButton.clicked.connect(self.moveDown)
 
         self.hideButton = QPushButton('Глаз')
         self.hideButton.clicked.connect(self.changeVisibility)
@@ -303,6 +312,12 @@ class LayerListItem(QWidget):
 
         self.updatePalette()
 
+    def moveUp(self):
+        self.signals.movedUp.emit(self.index)
+
+    def moveDown(self):
+        self.signals.movedDown.emit(self.index)
+
 
 class LayerList(QWidget):
     def __init__(self, parent):
@@ -314,7 +329,7 @@ class LayerList(QWidget):
         self.layout.setSpacing(0)
         self.setLayout(self.layout)
 
-        self.signals = Signals()
+        self.signals = LayerSignals()
 
         self.highestZ = 0
         self.layerCount = 0
@@ -325,14 +340,16 @@ class LayerList(QWidget):
         self.setPalette(palette)
 
     def newBitmapLayer(self):
-        self.layerCount += 1
         self.layout.addWidget(LayerListItem(
-            'Растровый слой ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.highestZ))
+            f'Растровый слой ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.layerCount))
+        self.layerCount += 1
+        self.highestZ += 1
         self.layout.itemAt(self.layerCount - 1).widget().signals.activated.connect(self.activateLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.deactivated.connect(self.deactivateLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.shown.connect(self.showLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.hidden.connect(self.hideLayer)
-        self.highestZ += 1
+        self.layout.itemAt(self.layerCount - 1).widget().signals.movedUp.connect(self.moveUpLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().signals.movedDown.connect(self.moveDownLayer)
 
     def activateLayer(self, index):
         for i in range(self.layerCount):
@@ -353,3 +370,73 @@ class LayerList(QWidget):
 
     def hideLayer(self, index):
         self.signals.hidden.emit(index)
+
+    def moveUpLayer(self, index):
+        inListIndex = -1
+        for i in range(self.layerCount):
+            if self.layout.itemAt(i).widget().index == index:
+                inListIndex = i
+                break
+
+        if inListIndex == self.layerCount - 1:
+            return
+
+        aName = self.layout.itemAt(inListIndex).widget().nameField.text()
+        bName = self.layout.itemAt(inListIndex + 1).widget().nameField.text()
+        self.layout.itemAt(inListIndex).widget().nameField.setText(bName)
+        self.layout.itemAt(inListIndex + 1).widget().nameField.setText(aName)
+
+        self.layout.itemAt(inListIndex).widget().z, self.layout.itemAt(inListIndex + 1).widget().z = \
+            self.layout.itemAt(inListIndex + 1).widget().z, self.layout.itemAt(inListIndex).widget().z
+
+        self.layout.itemAt(inListIndex).widget().index, self.layout.itemAt(inListIndex + 1).widget().index = \
+            self.layout.itemAt(inListIndex + 1).widget().index, self.layout.itemAt(inListIndex).widget().index
+
+        self.layout.itemAt(inListIndex).widget().type, self.layout.itemAt(inListIndex + 1).widget().type = \
+            self.layout.itemAt(inListIndex + 1).widget().type, self.layout.itemAt(inListIndex).widget().type
+
+        self.layout.itemAt(inListIndex).widget().visible, self.layout.itemAt(inListIndex + 1).widget().visible = \
+            self.layout.itemAt(inListIndex + 1).widget().visible, self.layout.itemAt(inListIndex).widget().visible
+
+        self.layout.itemAt(inListIndex).widget().active, self.layout.itemAt(inListIndex + 1).widget().active = \
+            self.layout.itemAt(inListIndex + 1).widget().active, self.layout.itemAt(inListIndex).widget().active
+
+        self.layout.itemAt(inListIndex).widget().updatePalette()
+        self.layout.itemAt(inListIndex + 1).widget().updatePalette()
+
+        self.signals.swappedLayers.emit(index, self.layout.itemAt(inListIndex).widget().index)
+
+    def moveDownLayer(self, index):
+        inListIndex = -1
+        for i in range(self.layerCount):
+            if self.layout.itemAt(i).widget().index == index:
+                inListIndex = i
+                break
+
+        if inListIndex == 0:
+            return
+
+        aName = self.layout.itemAt(inListIndex).widget().nameField.text()
+        bName = self.layout.itemAt(inListIndex - 1).widget().nameField.text()
+        self.layout.itemAt(inListIndex).widget().nameField.setText(bName)
+        self.layout.itemAt(inListIndex - 1).widget().nameField.setText(aName)
+
+        self.layout.itemAt(inListIndex).widget().z, self.layout.itemAt(inListIndex - 1).widget().z = \
+            self.layout.itemAt(inListIndex - 1).widget().z, self.layout.itemAt(inListIndex).widget().z
+
+        self.layout.itemAt(inListIndex).widget().index, self.layout.itemAt(inListIndex - 1).widget().index = \
+            self.layout.itemAt(inListIndex - 1).widget().index, self.layout.itemAt(inListIndex).widget().index
+
+        self.layout.itemAt(inListIndex).widget().type, self.layout.itemAt(inListIndex - 1).widget().type = \
+            self.layout.itemAt(inListIndex - 1).widget().type, self.layout.itemAt(inListIndex).widget().type
+
+        self.layout.itemAt(inListIndex).widget().visible, self.layout.itemAt(inListIndex - 1).widget().visible = \
+            self.layout.itemAt(inListIndex - 1).widget().visible, self.layout.itemAt(inListIndex).widget().visible
+
+        self.layout.itemAt(inListIndex).widget().active, self.layout.itemAt(inListIndex - 1).widget().active = \
+            self.layout.itemAt(inListIndex - 1).widget().active, self.layout.itemAt(inListIndex).widget().active
+
+        self.layout.itemAt(inListIndex).widget().updatePalette()
+        self.layout.itemAt(inListIndex - 1).widget().updatePalette()
+
+        self.signals.swappedLayers.emit(index, self.layout.itemAt(inListIndex).widget().index)

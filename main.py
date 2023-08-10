@@ -31,11 +31,11 @@ class Window(QWidget):
         self.tab.addTab(LayerToolbar(), "Слои")
         self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.newBitmapLayer)
 
-        self.layerList.currentItemChanged.connect(self.setCurrentLayer)
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
         self.layers.signals.shown.connect(self.showLayer)
         self.layers.signals.hidden.connect(self.hideLayer)
+        self.layers.signals.swappedLayers.connect(self.swapLayers)
 
         self.layout.addWidget(self.layers, 1, 0)
         self.layout.addWidget(self.preview, 1, 1, alignment=Qt.AlignCenter)
@@ -72,7 +72,6 @@ class Window(QWidget):
         self.highestZ += 1
         self.scene.addWidget(BitmapLayer(*self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
-        self.layerList.addItem("Новый растровый слой")
         self.layers.newBitmapLayer()
 
     def updateLayerState(self):
@@ -80,15 +79,6 @@ class Window(QWidget):
             self.scene.items()[self.currentLayer + 1].widget().updateState(self.tab.widget(0).color,
                                                                            self.tab.widget(0).width,
                                                                            self.tab.widget(0).tool)
-
-    def setCurrentLayer(self):
-        if self.currentLayer != -1:
-            self.scene.items()[self.currentLayer + 1].widget().active = False
-
-        self.currentLayer = self.layerList.currentRow()
-        self.preview.currentLayer = self.currentLayer
-        self.scene.items()[self.currentLayer + 1].widget().active = True
-        self.updateLayerState()
 
     def activateLayer(self, index):
         if self.currentLayer != -1:
@@ -106,6 +96,12 @@ class Window(QWidget):
 
     def hideLayer(self, index):
         self.scene.items()[index + 1].widget().hide()
+
+    def swapLayers(self, indexA, indexB):
+        aValue = self.scene.items()[indexA + 1].zValue()
+        bValue = self.scene.items()[indexB + 1].zValue()
+        self.scene.items()[indexA + 1].setZValue(bValue)
+        self.scene.items()[indexB + 1].setZValue(aValue)
 
 
 if __name__ == "__main__":
