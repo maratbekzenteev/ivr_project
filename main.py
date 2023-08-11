@@ -7,8 +7,26 @@ from bitmap_layer import BitmapLayer
 from background_layer import BackgroundLayer
 from gui_classes import BitmapToolbar, LayerToolbar, LayerList
 
+# Договорённости по именованию переменных:
+# - Названия переменных пишутся в стиле camelCase, чтобы избежать смешения двух стилей (в PyQt всё пишется этим стилем)
+# - Названия классов отображают, что это за класс (кнопка, превью, список, ...)
+# - Названия сигналов пишутся в форме Past Participle (clicked, shown, valueChanged, ...)
+# - Названия функций-слотов пишутся в форме инфинитива (addWidget, updateLayerState, swapLayers, ...)
 
+# Класс Window - класс главного окна программы.
+# Выровнен по QGridLayout, содержит в себе (вложенно) все виджеты программы.
+# Переменные:
+# - self.layout - QGridLayout, сетка выравнивания виджетов в окне.
+# - self.tab - QTabWidget, содержащий виджеты панелей инструментов со всем основным функционалом (см. gui_classes.py)
+# - self.preview - QGraphicsView, "рабочая область" окна. Отображает сцену self.scene
+# - self.layers - LayerList (см. gui_classes.py), меню управления слоями (скрытие, выделение, передний/задний план,...)
+# - self.scene - QGraphicsScene, сцена со всеми слоями, включая слой с задним фоном
+# - self.currentLayer - int, индекс слоя, с которым пользователь может взаимодействовать. Нумеруются с нуля (-1 - ни
+# - - один слой не выделен). Для перевода в индексацию self.scene прибавить 1
+# - self.highestZ - int, текущая "высота" самого высокого слоя. Поддерживается также в LayerList
+# - self.resolution - tuple(int, int), разрешение целевого изображения проекта
 class Window(QWidget):
+    # Инициализация графических элементов, подключение сигналов к слотам
     def __init__(self):
         super().__init__()
         self.setFont(QFont("Segoe UI", 12))
@@ -20,7 +38,6 @@ class Window(QWidget):
         self.highestZ = 0
         self.resolution = 1280, 720
 
-        self.layerList = QListWidget(self)
         self.layers = LayerList(self)
         self.preview = QGraphicsView(self)
         self.tab = QTabWidget(self)
@@ -29,7 +46,7 @@ class Window(QWidget):
         self.tab.widget(0).signals.valueChanged.connect(self.updateLayerState)
 
         self.tab.addTab(LayerToolbar(), "Слои")
-        self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.newBitmapLayer)
+        self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.addBitmapLayer)
 
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
@@ -55,49 +72,60 @@ class Window(QWidget):
 
         self.show()
 
+    # Слот для self.zoomInShortcut, увеличивает масштаб отображения в рабочей области в 5/4 раза
     def zoomIn(self):
         self.preview.scale(1.25, 1.25)
 
+    # Слот для self.zoomOutShortcut, увеличивает масштаб отображения в рабочей области в 4/5 раза
     def zoomOut(self):
         self.preview.scale(0.8, 0.8)
 
-    # def resizeEvent(self, event):
-    #     self.layout.itemAtPosition(1, 1).widget().setGeometry(
-    #         QRect(self.layout.itemAtPosition(0, 1).geometry().topLeft().x(),
-    #               self.layout.itemAtPosition(1, 0).geometry().topLeft().y(),
-    #               self.layout.itemAtPosition(0, 1).geometry().width(),
-    #               self.layout.itemAtPosition(1, 0).geometry().height()))
-
-    def newBitmapLayer(self):
+    # Добавление нового растрового слоя.
+    # Слот для self.tab.widget(1).newBitmapLayerButton.clicked, увеличивает макс. высоту слоя,
+    # добавляет слой на сцену (как и любой слой, в виде QProxyWidget) и в список слоёв.
+    def addBitmapLayer(self):
         self.highestZ += 1
         self.scene.addWidget(BitmapLayer(*self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newBitmapLayer()
 
+    # Обновление цвета, толщины и инструмента рисования на слое. В будущем содержимое будет передаваться в классе State
+    # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     def updateLayerState(self):
         if self.currentLayer != -1:
             self.scene.items()[self.currentLayer + 1].widget().updateState(self.tab.widget(0).color,
                                                                            self.tab.widget(0).width,
                                                                            self.tab.widget(0).tool)
 
-    def activateLayer(self, index):
+    # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
+    # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
+    # передаёт состояние панели инструментов на случай, если её состояние поменяли, пока активным был другой слой,
+    # обновляет переменную self.currentLayer
+    def activateLayer(self, index: int) -> None:
         if self.currentLayer != -1:
             self.scene.items()[self.currentLayer + 1].widget().active = False
         self.scene.items()[index + 1].widget().active = True
         self.currentLayer = index
         self.updateLayerState()
 
-    def deactivateLayer(self, index):
+    # Деактивация слоя. Слот для self.layers.signals.deactivated.
+    # Снимает выделение с ранее выделенного слоя (который и послал сигнал),
+    # сообщает в self.currentLayer, что никакой слой не выделен.
+    def deactivateLayer(self, index: int) -> None:
         self.scene.items()[index + 1].widget().active = False
         self.currentLayer = -1
 
-    def showLayer(self, index):
+    # Показывает слой. Слот для self.layers.signals.shown
+    def showLayer(self, index: int) -> None:
         self.scene.items()[index + 1].widget().show()
 
-    def hideLayer(self, index):
+    # Скрывает слой. Слот для self.layers.signals.hidden
+    def hideLayer(self, index: int) -> None:
         self.scene.items()[index + 1].widget().hide()
 
-    def swapLayers(self, indexA, indexB):
+    # Обменивает слои их высотами (один перемещается под другой). Слот для self.layers.signals.swappedLayers.
+    # Используется при перемещении слоя пользователем как выше, так и ниже.
+    def swapLayers(self, indexA: int, indexB: int) -> None:
         aValue = self.scene.items()[indexA + 1].zValue()
         bValue = self.scene.items()[indexB + 1].zValue()
         self.scene.items()[indexA + 1].setZValue(bValue)
