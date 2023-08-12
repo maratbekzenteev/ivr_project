@@ -93,9 +93,7 @@ class Window(QWidget):
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     def updateLayerState(self):
         if self.currentLayer != -1:
-            self.scene.items()[self.currentLayer + 1].widget().updateState(self.tab.widget(0).color,
-                                                                           self.tab.widget(0).width,
-                                                                           self.tab.widget(0).tool)
+            self.scene.items()[self.currentLayer + 1].widget().setColor(self.tab.widget(0).color)
 
     # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
