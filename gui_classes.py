@@ -323,7 +323,7 @@ class LayerToolbar(QWidget):
         self.setLayout(self.layout)
 
         self.newBitmapLayerButton = QToolButton()
-        self.newBitmapLayerButton.setText('Новый растровый слой')
+        self.newBitmapLayerButton.setText('Новый холст')
         self.newBitmapLayerButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.newBitmapLayerButton.setAutoRaise(True)
         self.newBitmapLayerButton.setIconSize(QSize(64, 64))
@@ -487,7 +487,7 @@ class LayerList(QWidget):
     # обновляет переменные состояния, подключает сигналы к слотам
     def newBitmapLayer(self):
         self.layout.addWidget(LayerListItem(
-            f'Растровый слой ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.layerCount))
+            f'Холст ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.layerCount))
         self.layerCount += 1
         self.highestZ += 1
         self.layout.itemAt(self.layerCount - 1).widget().signals.activated.connect(self.activateLayer)
