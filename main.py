@@ -13,6 +13,7 @@ from gui_classes import BitmapToolbar, LayerToolbar, LayerList
 # - Названия сигналов пишутся в форме Past Participle (clicked, shown, valueChanged, ...)
 # - Названия функций-слотов пишутся в форме инфинитива (addWidget, updateLayerState, swapLayers, ...)
 
+
 # Класс Window - класс главного окна программы.
 # Выровнен по QGridLayout, содержит в себе (вложенно) все виджеты программы.
 # Переменные:

@@ -4,8 +4,39 @@ from PyQt5.QtCore import Qt, QPoint
 from collections import deque
 
 
+# В этом файле описан класс растрового слоя, помещаемый на сцену Window.scene при помощи QProxyWidget
+
+# Класс растрового слоя. Сигналов не сообщает.
+# Аттрибуты:
+# - self.parent - QWidget, ссылка на родительский виджет (Window).
+# - - Используется для передачи нажатий на активный слой, т.к. напрямую это делать затратно
+# - self.resolution - (int, int), разрешение слоя, а равно и всего проекта
+# - self.bitmap - QImage, содержимое слоя. Используется для рисования на слое инструментами QPainter
+# - self.fastBitmap - str, содержимое слоя. Используется для быстрого прямого доступа к точкам (инструментом заливки).
+# - - Обновляется по требованию, т.е. в начале процедуры заливки
+# - self.tool - str (в будущем планируется заменить на Enum), текущий выбранный инструмент
+# - - Значения (названия имеют длину до 4 симв. включительно, чтобы ускорить сравнение строк):
+# - - - 'none' - инструмент не выбран
+# - - - 'brsh' - кисть. След кисти идёт по траектории движения мыши с опущенной ЛКМ. Форма следа округлая (Qt.RoundCap)
+# - - - 'pen' - ручка. То же, что и кисть, но с более угловатой формой следа (Qt.SquareCap)
+# - - - 'penc' - карандаш. То же, что и кисть, но с более отрывистой формой следа (Qt.FlatCap)
+# - - - 'line' - отрезок. Соединяет отрезком точку нажания и точку отпускания ЛКМ.
+# - - - 'rect' - прямоугольник. Строит прямоугольник по диагонали, заданной пользователем как отрезок, соединяющий
+# - - - - точку нажатия и точку отпускания ЛКМ, со сторонами, параллельными осям координат
+# - - - 'oval' - эллипс. Строит эллипс, вписанный в прямоугольник, построенный описанным выше способом
+# - - - 'fill' - заливка. Меняет цвет области точек цвета точки, в которой была нажата ЛКМ. Область ограничена
+# - - - - точками другого цвета
+# - self.active - bool, True - слой активирован (доступен для изменения), False - слой деактивирован
+# - self.drawing - bool, True - ЛКМ нажата, пользователь рисует, False - ЛКМ отпущена.
+# - - Необходим для предотвращения рисования при перемещении мыши, когда пользователь не начал рисовать.
+# - self.lastMousePos - QPoint, координаты предыдущей точки рисуемой точки кривой (для кисти, ручки, карандаша) или
+# - -  координаты первой точки, от которой рисуется фигура (для отрезка, прямоугольника, эллипса)
+# - self.curMousePos - QPoint, используется при рисовании отрезка, прямоугольника, эллипса. Вторая точка, по которой
+# - - рисуется фигура
+# - self.pen - QPen, задает стиль рисования ("начертание пера"), цвет и толщину
 class BitmapLayer(QWidget):
-    def __init__(self, width, height, parent):
+    # Инициализация аттрибутов, изменение фона на прозрачный
+    def __init__(self, width: int, height: int, parent: QWidget):
         super().__init__()
 
         self.parent = parent
@@ -31,6 +62,8 @@ class BitmapLayer(QWidget):
         palette.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
         self.setPalette(palette)
 
+    # Отрисовка виджета слоя. Помимо самого содержимого слоя, если пользователь не закончил рисовать
+    # отрезок, прямоугольник или эллипс, поверх слоя тонкой линией также будет отрисована рисуемая фигура
     def paintEvent(self, event):
         qp = QPainter(self)
         qp.drawImage(0, 0, self.bitmap)
@@ -47,6 +80,9 @@ class BitmapLayer(QWidget):
                 x2, y2 = self.curMousePos.x(), self.curMousePos.y()
                 qp.drawEllipse(min(x1, x2), min(y1, y2), abs(x1 - x2), abs(y1 - y2))
 
+    # Обработчик нажатия мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
+    # то event будет приходить ему. В таком случае слой через self.parent передает нажатие на нужный слой.
+    # В противном случае включается self.drawing и обновляется self.lastMousePos
     def mousePressEvent(self, event):
         if not self.active:
             self.parent.scene.items()[self.parent.currentLayer + 1].widget().mousePressEvent(event)
@@ -55,10 +91,16 @@ class BitmapLayer(QWidget):
                 self.drawing = True
                 self.lastMousePos = event.pos()
 
+    # Обработчик движения мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
+    # то event будет приходить ему. В таком случае слой через self.parent передает нажатие на нужный слой.
+    # В противном случае проверяется, что мышь уже была нажата ранее и выбран инструмент.
+    # Если инструмент - кисть, ручка или карандаш, то результат рисования наносится на self.bitmap сразу.
+    # Если это отрезок, прямоугольник или эллипс, то обновляется только self.curMousePos для корректной отрисовки
+    # предпросмотра рисуемой фигуры
     def mouseMoveEvent(self, event):
         if not self.active:
             self.parent.scene.items()[self.parent.currentLayer + 1].widget().mouseMoveEvent(event)
-        elif event.buttons() & Qt.LeftButton & self.drawing & self.active & (self.tool != 'none'):
+        elif event.buttons() & Qt.LeftButton & self.drawing & (self.tool != 'none'):
             if self.tool in {'brsh', 'pen', 'penc'}:
                 qp = QPainter(self.bitmap)
                 qp.setPen(self.pen)
@@ -70,6 +112,12 @@ class BitmapLayer(QWidget):
 
             self.update()
 
+    # Обработчик отпускания кнопок мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
+    # то event будет приходить ему. В таком случае слой через self.parent передает нажатие на нужный слой.
+    # В противном случае проверяется, идет ли сейчас рисование. Если да, то оно заканчивается, => надо нарисовать
+    # отрезок, прямоугольник или эллипс. Если инструмент - заливка, то обходом в ширину закрашиваются точки того же
+    # цвета, что и точка заливки, находящиеся в одной области с ней. Для ускорения процесса используется быстрый доступ
+    # к точкам слоя при помощи предварительно обновленного self.fastBitmap. Заливка работает медленно
     def mouseReleaseEvent(self, event):
         if self.active:
             if self.drawing:
@@ -122,7 +170,8 @@ class BitmapLayer(QWidget):
         else:
             self.parent.scene.items()[self.parent.currentLayer + 1].widget().mouseReleaseEvent(event)
 
-    def updateState(self, color, width, tool):
+    # Обновление инструмента, цвета и толщины рисования на слое
+    def updateState(self, color: QColor, width: int, tool: str) -> None:
         self.pen.setColor(color)
         self.pen.setWidth(width)
         self.tool = tool
@@ -134,9 +183,11 @@ class BitmapLayer(QWidget):
         else:
             self.pen.setCapStyle(Qt.RoundCap)
 
+    # Обновление self.fastBitmap
     def updateFastBitmap(self):
         self.fastBitmap = self.bitmap.bits().asstring(self.resolution[0] * self.resolution[1] * 4)
 
-    def fastGetPixel(self, x, y):
+    # Быстрый доступ к пикселю при помощи self.fastBitmap
+    def fastGetPixel(self, x: int, y: int) -> str:
         i = (x + (y * self.resolution[0])) * 4
         return self.fastBitmap[i:i + 4]
