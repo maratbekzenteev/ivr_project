@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWi
                              QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider, QColorDialog,
                              QLineEdit, QRadioButton, QButtonGroup)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QPalette, QBrush, QColor, QPainter, QPen, QIcon
-from PyQt5.QtCore import Qt, QRect, pyqtSignal, QObject, QSize
+from PyQt5.QtCore import Qt, QRect, pyqtSignal, pyqtSlot, QObject, QSize
 from colorsys import hsv_to_rgb, rgb_to_hsv
 
 # В этом файле описаны классы элементов графического интерфейса программы,
@@ -102,6 +102,7 @@ class BitmapToolbar(QWidget):
     # Если цвета self.colorPreview, self.colorPicker и self.color не совпадают, значит, цвет был изменен.
     # Цвет всех эл-ов меняется на самый новый, т.е. на тот, который имеет лишь 1 из 3 эл-ов.
     # Также обновляется толщина и инструмент. Сообщается сигнал valueChanged
+    @pyqtSlot()
     def updateValues(self):
         if self.colorPreview.color != self.color:
             self.color = self.colorPreview.color
@@ -151,6 +152,7 @@ class ColorPicker(QWidget):
 
     # Обновление цвета при нажатии ColoredButton, слот сигнала ColoredButton.clicked.
     # Сообщает сигнал self.signals.valueChanged
+    @pyqtSlot()
     def updateColor(self):
         self.color = self.sender().color
         self.signals.valueChanged.emit()
@@ -218,6 +220,7 @@ class ColorPreview(QWidget):
         self.layout.addWidget(self.chooseColorButton, 1, 0)
 
     # Обработчик отображения диалога self.colorDialog, слот сигнала self.chooseColorButton.clicked
+    @pyqtSlot()
     def showDialog(self):
         self.colorDialog.show()
         self.colorDialog.setCurrentColor(self.color)
@@ -225,6 +228,7 @@ class ColorPreview(QWidget):
     # Обработкик диалога self.colorDialog после нажатия пользователем кнопки "ОК".
     # Слот сигнала self.colorDialog.colorSelected. Обновляет цвет self.colorButton согласно новым данным,
     # сообщает сигнал valueChanged
+    @pyqtSlot()
     def chooseColor(self):
         self.color = self.colorDialog.selectedColor()
         self.colorButton.setColor(self.color)
@@ -302,6 +306,7 @@ class ToolSelector(QWidget):
 
     # Обновление состояния при нажатии одной из кнопок. Слот сигнала self.layout.itemAtPosition(0, i).widget().clicked
     # Сообщает сигнал valueChanged
+    @pyqtSlot()
     def updateState(self):
         if self.sender().isChecked():
             self.state = self.buttonToState[self.sender().text()]
@@ -431,6 +436,7 @@ class LayerListItem(QWidget):
     # Обработчик нажатия self.activateButton, слот сигнала self.activateButton.clicked.
     # Если виджет уже активен, деакивирует его с сообщением сигнала deactivated, если нет,
     # активирует с сообщением сигнала activated. Затем согласно изменениям обновляется внешний вид виджета
+    @pyqtSlot()
     def activate(self):
         if self.active:
             self.signals.deactivated.emit(self.index)
@@ -444,6 +450,7 @@ class LayerListItem(QWidget):
     # Обработчик нажатия self.hideButton, слот сигнала self.hideButton.clicked.
     # Если виджет уже скрыт, делает его видимым с сообщением сигнала shown, если нет,
     # скрывает с сообщением сигнала hidden. Затем согласно изменениям обновляется внешний вид виджета
+    @pyqtSlot()
     def changeVisibility(self):
         if self.visible:
             self.signals.hidden.emit(self.index)
@@ -456,11 +463,13 @@ class LayerListItem(QWidget):
 
     # Слот сигнала self.moveUpButton.clicked. Сообщает сигнал movedUp. Вся работа по перемещению слоя
     # осуществляется в LayerList и Window
+    @pyqtSlot()
     def moveUp(self):
         self.signals.movedUp.emit(self.index)
 
     # Слот сигнала self.moveDownButton.clicked. Сообщает сигнал movedDown. Вся работа по перемещению слоя
     # осуществляется в LayerList и Window
+    @pyqtSlot()
     def moveDown(self):
         self.signals.movedDown.emit(self.index)
 
@@ -524,6 +533,7 @@ class LayerList(QWidget):
     # (хранить индекс активированного слоя не на сцене, а в списке нецелесообразно в условиях адекватного к-ва слоев).
     # Сообщает сигнал activated. Необходимости итерироваться снова в поисках активированного виджета по индексу на сцене
     # не требуется, так как LayerListItem умеет это делать сам уже после сообщения сигнала
+    @pyqtSlot(int)
     def activateLayer(self, index: int) -> None:
         for i in range(self.layerCount):
             self.layout.itemAt(i).widget().active = False
@@ -534,6 +544,7 @@ class LayerList(QWidget):
     # Дективация слоя. Слот сигнала LayerListItem.deactivated. Итерируется по всем слоям и деактивирует, обновляя
     # (хранить индекс активированного слоя не на сцене, а в списке нецелесообразно в условиях адекватного к-ва слоев).
     # Сообщает сигнал deactivated
+    @pyqtSlot(int)
     def deactivateLayer(self, index: int) -> None:
         for i in range(self.layerCount):
             self.layout.itemAt(i).widget().active = False
@@ -543,15 +554,18 @@ class LayerList(QWidget):
 
     # Слот сигнала LayerListItem.shown. Сообщает сигнал shown, сам не делает ничего, так как внешний вид виджет
     # обновляет сам, а показ на сцене осуществляет класс Window
+    @pyqtSlot(int)
     def showLayer(self, index: int) -> None:
         self.signals.shown.emit(index)
 
     # Слот сигнала LayerListItem.hidden. Сообщает сигнал hidden, сам не делает ничего, так как внешний вид виджет
     # обновляет сам, а скрытие на сцене осуществляет класс Window
+    @pyqtSlot(int)
     def hideLayer(self, index: int) -> None:
         self.signals.hidden.emit(index)
 
     # Функция перемещения слоя выше в списке. Слот сигнала LayerListItem.movedUp
+    @pyqtSlot(int)
     def moveUpLayer(self, index: int) -> None:
         # Слой с таким индексом на сцене ищется среди всех за линейное время
         inListIndex = -1
@@ -602,6 +616,7 @@ class LayerList(QWidget):
         self.signals.swappedLayers.emit(index, self.layout.itemAt(inListIndex).widget().index)
 
     # Функция перемещения слоя ниже в списке. Слот сигнала LayerListItem.movedDown
+    @pyqtSlot(int)
     def moveDownLayer(self, index: int) -> None:
         # Слой с таким индексом на сцене ищется среди всех за линейное время
         inListIndex = -1
@@ -721,6 +736,7 @@ class GridToolbar(QWidget):
         self.layout.addWidget(self.hAddButton, 4, 3)
         self.layout.addWidget(self.hDeleteButton, 5, 3)
 
+    @pyqtSlot(QRadioButton)
     def updateVIndentType(self, button: QRadioButton):
         if button.text() == 'Процентов':
             self.vSpinBox.setMaximum(100)
@@ -729,6 +745,7 @@ class GridToolbar(QWidget):
             self.vSpinBox.setMaximum(self.resolution[0])
             self.currentVIndentType = 0
 
+    @pyqtSlot(QRadioButton)
     def updateHIndentType(self, button: QRadioButton):
         if button.text() == 'Процентов':
             self.hSpinBox.setMaximum(100)
@@ -737,6 +754,7 @@ class GridToolbar(QWidget):
             self.hSpinBox.setMaximum(self.resolution[0])
             self.currentHIndentType = 0
 
+    @pyqtSlot()
     def addVLine(self):
         if self.currentVIndentType == -1:
             return
@@ -748,6 +766,7 @@ class GridToolbar(QWidget):
         self.sortV()
         self.signals.added.emit(1, self.currentVIndentType, self.vSpinBox.value())
 
+    @pyqtSlot()
     def addHLine(self):
         if self.currentHIndentType == -1:
             return
@@ -775,6 +794,7 @@ class GridToolbar(QWidget):
         for i in lines:
             self.hList.addItem(i)
 
+    @pyqtSlot()
     def deleteVLine(self):
         if self.vList.currentRow() == -1:
             return
@@ -783,6 +803,7 @@ class GridToolbar(QWidget):
         self.vList.takeItem(self.vList.currentRow())
         self.signals.deleted.emit(1, 0 if selectedItemText[-1] == 'x' else 1, int(selectedItemText.split()[0]))
 
+    @pyqtSlot()
     def deleteHLine(self):
         if self.hList.currentRow() == -1:
             return

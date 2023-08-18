@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel,
                              QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, pyqtSlot
 from bitmap_layer import BitmapLayer
 from grid_layer import GridLayer
 from background_layer import BackgroundLayer
@@ -84,16 +84,19 @@ class Window(QWidget):
         self.show()
 
     # Слот для self.zoomInShortcut, увеличивает масштаб отображения в рабочей области в 5/4 раза
+    @pyqtSlot()
     def zoomIn(self):
         self.preview.scale(1.25, 1.25)
 
     # Слот для self.zoomOutShortcut, увеличивает масштаб отображения в рабочей области в 4/5 раза
+    @pyqtSlot()
     def zoomOut(self):
         self.preview.scale(0.8, 0.8)
 
     # Добавление нового растрового слоя.
     # Слот для self.tab.widget(1).newBitmapLayerButton.clicked, увеличивает макс. высоту слоя,
     # добавляет слой на сцену (как и любой слой, в виде QProxyWidget) и в список слоёв.
+    @pyqtSlot()
     def addBitmapLayer(self):
         self.highestZ += 1
         self.scene.addWidget(BitmapLayer(*self.resolution, self))
@@ -102,6 +105,7 @@ class Window(QWidget):
 
     # Обновление цвета, толщины и инструмента рисования на слое. В будущем содержимое будет передаваться в классе State
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
+    @pyqtSlot()
     def updateLayerState(self):
         if self.currentLayer != -1:
             self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(0).color,
@@ -112,6 +116,7 @@ class Window(QWidget):
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
     # передаёт состояние панели инструментов на случай, если её состояние поменяли, пока активным был другой слой,
     # обновляет переменную self.currentLayer
+    @pyqtSlot(int)
     def activateLayer(self, index: int) -> None:
         if self.currentLayer != -1:
             self.scene.items()[self.currentLayer].widget().active = False
@@ -123,29 +128,35 @@ class Window(QWidget):
     # Деактивация слоя. Слот для self.layers.signals.deactivated.
     # Снимает выделение с ранее выделенного слоя (который и послал сигнал),
     # сообщает в self.currentLayer, что никакой слой не выделен.
+    @pyqtSlot(int)
     def deactivateLayer(self, index: int) -> None:
         self.scene.items()[index].widget().active = False
         self.currentLayer = -1
 
     # Показывает слой. Слот для self.layers.signals.shown
+    @pyqtSlot(int)
     def showLayer(self, index: int) -> None:
         self.scene.items()[index].widget().show()
 
     # Скрывает слой. Слот для self.layers.signals.hidden
+    @pyqtSlot(int)
     def hideLayer(self, index: int) -> None:
         self.scene.items()[index].widget().hide()
 
     # Обменивает слои их высотами (один перемещается под другой). Слот для self.layers.signals.swappedLayers.
     # Используется при перемещении слоя пользователем как выше, так и ниже.
+    @pyqtSlot(int, int)
     def swapLayers(self, indexA: int, indexB: int) -> None:
         aValue = self.scene.items()[indexA].zValue()
         bValue = self.scene.items()[indexB].zValue()
         self.scene.items()[indexA].setZValue(bValue)
         self.scene.items()[indexB].setZValue(aValue)
 
+    @pyqtSlot(int, int, int)
     def addGridLine(self, direction: int, indentType: int, indent: int) -> None:
         self.scene.items()[1].widget().addLine(direction, indentType, indent)
 
+    @pyqtSlot(int, int, int)
     def deleteGridLine(self, direction: int, indentType: int, indent: int) -> None:
         self.scene.items()[1].widget().deleteLine(direction, indentType, indent)
 
