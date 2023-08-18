@@ -85,7 +85,7 @@ class BitmapLayer(QWidget):
     # В противном случае включается self.drawing и обновляется self.lastMousePos
     def mousePressEvent(self, event):
         if not self.active:
-            self.parent.scene.items()[self.parent.currentLayer + 1].widget().mousePressEvent(event)
+            self.parent.scene.items()[self.parent.currentLayer].widget().mousePressEvent(event)
         else:
             if event.button() == Qt.LeftButton and self.active and self.tool != 'none':
                 self.drawing = True
@@ -99,7 +99,7 @@ class BitmapLayer(QWidget):
     # предпросмотра рисуемой фигуры
     def mouseMoveEvent(self, event):
         if not self.active:
-            self.parent.scene.items()[self.parent.currentLayer + 1].widget().mouseMoveEvent(event)
+            self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
         elif event.buttons() & Qt.LeftButton & self.drawing & (self.tool != 'none'):
             if self.tool in {'brsh', 'pen', 'penc'}:
                 qp = QPainter(self.bitmap)
@@ -168,7 +168,7 @@ class BitmapLayer(QWidget):
 
                 self.update()
         else:
-            self.parent.scene.items()[self.parent.currentLayer + 1].widget().mouseReleaseEvent(event)
+            self.parent.scene.items()[self.parent.currentLayer].widget().mouseReleaseEvent(event)
 
     # Обновление инструмента, цвета и толщины рисования на слое
     def updateState(self, color: QColor, width: int, tool: str) -> None:

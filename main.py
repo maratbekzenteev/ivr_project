@@ -4,8 +4,9 @@ from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWi
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect
 from bitmap_layer import BitmapLayer
+from grid_layer import GridLayer
 from background_layer import BackgroundLayer
-from gui_classes import BitmapToolbar, LayerToolbar, LayerList
+from gui_classes import BitmapToolbar, LayerToolbar, GridToolbar, LayerList
 
 # Договорённости по именованию переменных:
 # - Названия переменных пишутся в стиле camelCase, чтобы избежать смешения двух стилей (в PyQt всё пишется этим стилем)
@@ -49,6 +50,10 @@ class Window(QWidget):
         self.tab.addTab(LayerToolbar(), "Слои")
         self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.addBitmapLayer)
 
+        self.tab.addTab(GridToolbar(self.resolution), "Сетка")
+        self.tab.widget(2).signals.added.connect(self.addGridLine)
+        self.tab.widget(2).signals.deleted.connect(self.deleteGridLine)
+
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
         self.layers.signals.shown.connect(self.showLayer)
@@ -69,7 +74,12 @@ class Window(QWidget):
         self.scene = QGraphicsScene(self)
         self.scene.setItemIndexMethod(-1)
         self.scene.addWidget(BackgroundLayer(*self.resolution))
+        self.scene.addWidget(GridLayer(*self.resolution))
+        self.scene.items()[-1].setZValue(1024)
         self.preview.setScene(self.scene)
+
+        self.layers.newStaticLayer('Фон', 0)
+        self.layers.newStaticLayer('Сетка', 1024)
 
         self.show()
 
@@ -94,7 +104,9 @@ class Window(QWidget):
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     def updateLayerState(self):
         if self.currentLayer != -1:
-            self.scene.items()[self.currentLayer + 1].widget().setColor(self.tab.widget(0).color)
+            self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(0).color,
+                                                                           self.tab.widget(0).width,
+                                                                           self.tab.widget(0).tool)
 
     # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
@@ -102,34 +114,40 @@ class Window(QWidget):
     # обновляет переменную self.currentLayer
     def activateLayer(self, index: int) -> None:
         if self.currentLayer != -1:
-            self.scene.items()[self.currentLayer + 1].widget().active = False
-        self.scene.items()[index + 1].widget().active = True
+            self.scene.items()[self.currentLayer].widget().active = False
+        self.scene.items()[index].widget().active = True
         self.currentLayer = index
+
         self.updateLayerState()
 
     # Деактивация слоя. Слот для self.layers.signals.deactivated.
     # Снимает выделение с ранее выделенного слоя (который и послал сигнал),
     # сообщает в self.currentLayer, что никакой слой не выделен.
     def deactivateLayer(self, index: int) -> None:
-        self.scene.items()[index + 1].widget().active = False
+        self.scene.items()[index].widget().active = False
         self.currentLayer = -1
 
     # Показывает слой. Слот для self.layers.signals.shown
     def showLayer(self, index: int) -> None:
-        self.scene.items()[index + 1].widget().show()
+        self.scene.items()[index].widget().show()
 
     # Скрывает слой. Слот для self.layers.signals.hidden
     def hideLayer(self, index: int) -> None:
-        self.scene.items()[index + 1].widget().hide()
+        self.scene.items()[index].widget().hide()
 
     # Обменивает слои их высотами (один перемещается под другой). Слот для self.layers.signals.swappedLayers.
     # Используется при перемещении слоя пользователем как выше, так и ниже.
     def swapLayers(self, indexA: int, indexB: int) -> None:
-        aValue = self.scene.items()[indexA + 1].zValue()
-        bValue = self.scene.items()[indexB + 1].zValue()
-        self.scene.items()[indexA + 1].setZValue(bValue)
-        self.scene.items()[indexB + 1].setZValue(aValue)
+        aValue = self.scene.items()[indexA].zValue()
+        bValue = self.scene.items()[indexB].zValue()
+        self.scene.items()[indexA].setZValue(bValue)
+        self.scene.items()[indexB].setZValue(aValue)
 
+    def addGridLine(self, direction: int, indentType: int, indent: int) -> None:
+        self.scene.items()[1].widget().addLine(direction, indentType, indent)
+
+    def deleteGridLine(self, direction: int, indentType: int, indent: int) -> None:
+        self.scene.items()[1].widget().deleteLine(direction, indentType, indent)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

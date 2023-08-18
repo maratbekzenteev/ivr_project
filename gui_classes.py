@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel, QToolButton, QVBoxLayout,
                              QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider, QColorDialog,
-                             QLineEdit)
+                             QLineEdit, QRadioButton, QButtonGroup)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QPalette, QBrush, QColor, QPainter, QPen, QIcon
 from PyQt5.QtCore import Qt, QRect, pyqtSignal, QObject, QSize
 from colorsys import hsv_to_rgb, rgb_to_hsv
@@ -33,6 +33,13 @@ class LayerSignals(QObject):
     movedDown = pyqtSignal(int)
     # Два слоя (теоретически, не обязательно соседние) были поменяны местами
     swappedLayers = pyqtSignal(int, int)
+
+
+class GridSignals(QObject):
+    # h/v, indentType, val
+    added = pyqtSignal(int, int, int)
+    # h/v, indentType, val
+    deleted = pyqtSignal(int, int, int)
 
 
 # Виджет панели инструментов для работы с растровыми слоями. Набор сигналов - Signals
@@ -363,7 +370,7 @@ class LayerToolbar(QWidget):
 # - self.active - bool, True - слой активен (его можно редактировать, он текущий), False - слой деактивирован
 class LayerListItem(QWidget):
     # Инициализация графических элементов, подключение сигналов к слотам, инициализация аттрибутов
-    def __init__(self, name: str, type: str, z: int, index: int):
+    def __init__(self, name: str, type: str, z: int, index: int, static=False):
         super().__init__()
 
         self.layout = QGridLayout(self)
@@ -378,10 +385,10 @@ class LayerListItem(QWidget):
         self.visible = True
         self.active = False
 
+        self.nameField = QLineEdit(name)
+
         self.activateButton = QPushButton('⌘')
         self.activateButton.clicked.connect(self.activate)
-
-        self.nameField = QLineEdit(name)
 
         self.upButton = QPushButton('Выше')
         self.upButton.clicked.connect(self.moveUp)
@@ -391,6 +398,13 @@ class LayerListItem(QWidget):
 
         self.hideButton = QPushButton('Глаз')
         self.hideButton.clicked.connect(self.changeVisibility)
+
+        if static:
+            self.nameField.setDisabled(True)
+
+            self.upButton.hide()
+            self.downButton.hide()
+            self.activateButton.hide()
 
         self.layout.addWidget(self.activateButton, 0, 0, 2, 1, Qt.AlignLeft)
         self.layout.addWidget(self.nameField, 0, 1, 1, 3, Qt.AlignCenter)
@@ -497,6 +511,15 @@ class LayerList(QWidget):
         self.layout.itemAt(self.layerCount - 1).widget().signals.movedUp.connect(self.moveUpLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.movedDown.connect(self.moveDownLayer)
 
+    def newStaticLayer(self, name, z):
+        self.layout.addWidget(LayerListItem(
+            name, 'stl', z, self.layerCount, static=True))
+        self.layerCount += 1
+        self.highestZ += 1
+        self.layout.itemAt(self.layerCount - 1).widget().signals.shown.connect(self.showLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().signals.hidden.connect(self.hideLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().updatePalette()
+
     # Активация слоя. Слот сигнала LayerListItem.activated. Итерируется по всем слоям и деактивирует, обновляя графику
     # (хранить индекс активированного слоя не на сцене, а в списке нецелесообразно в условиях адекватного к-ва слоев).
     # Сообщает сигнал activated. Необходимости итерироваться снова в поисках активированного виджета по индексу на сцене
@@ -588,7 +611,7 @@ class LayerList(QWidget):
                 break
 
         # Если слой и так ниже всех, то есть имеет наименьший возможный индекс в списке, нельзя переместить => выходим
-        if inListIndex == 0:
+        if inListIndex == 2:
             return
 
         # Далее меняются местами свойства найденного LayerListItem и того, что ниже него на 1 (имеет меньший на 1 индекс
@@ -627,3 +650,143 @@ class LayerList(QWidget):
 
         # Сигналом swappedLayers сообщается необходимость поменять 2 слоя местами на сцене
         self.signals.swappedLayers.emit(index, self.layout.itemAt(inListIndex).widget().index)
+
+
+class GridToolbar(QWidget):
+    def __init__(self, resolution):
+        super().__init__()
+
+        self.layout = QGridLayout(self)
+        self.setLayout(self.layout)
+
+        self.signals = GridSignals()
+
+        self.resolution = resolution
+        self.currentVIndentType = -1
+        self.currentHIndentType = -1
+
+        self.vList = QListWidget()
+
+        self.vSpinBox = QSpinBox()
+        self.vSpinBox.setMinimum(0)
+        self.vSpinBox.setMaximum(0)
+
+        self.vPercentButton = QRadioButton('Процентов')
+        self.vPixelButton = QRadioButton('Пикселей')
+
+        self.vAddButton = QPushButton('Добавить')
+        self.vAddButton.clicked.connect(self.addVLine)
+
+        self.vDeleteButton = QPushButton('Удалить')
+        self.vDeleteButton.clicked.connect(self.deleteVLine)
+
+        self.vButtons = QButtonGroup()
+        self.vButtons.addButton(self.vPixelButton)
+        self.vButtons.addButton(self.vPercentButton)
+        self.vButtons.buttonClicked.connect(self.updateVIndentType)
+
+        self.layout.addWidget(QLabel('Вертикальные прямые'), 0, 0, 1, 2, Qt.AlignLeft)
+        self.layout.addWidget(self.vList, 1, 0, 5, 1, Qt.AlignLeft)
+        self.layout.addWidget(self.vSpinBox, 1, 1)
+        self.layout.addWidget(self.vPercentButton, 2, 1)
+        self.layout.addWidget(self.vPixelButton, 3, 1)
+        self.layout.addWidget(self.vAddButton, 4, 1)
+        self.layout.addWidget(self.vDeleteButton, 5, 1)
+
+        self.hList = QListWidget()
+
+        self.hSpinBox = QSpinBox()
+        self.hSpinBox.setMinimum(0)
+        self.hSpinBox.setMaximum(0)
+
+        self.hPercentButton = QRadioButton('Процентов')
+        self.hPixelButton = QRadioButton('Пикселей')
+
+        self.hAddButton = QPushButton('Добавить')
+        self.hAddButton.clicked.connect(self.addHLine)
+
+        self.hDeleteButton = QPushButton('Удалить')
+        self.hDeleteButton.clicked.connect(self.deleteHLine)
+
+        self.hButtons = QButtonGroup()
+        self.hButtons.addButton(self.hPixelButton)
+        self.hButtons.addButton(self.hPercentButton)
+        self.hButtons.buttonClicked.connect(self.updateHIndentType)
+
+        self.layout.addWidget(QLabel('Горизонтальные прямые'), 0, 2, 1, 2, Qt.AlignLeft)
+        self.layout.addWidget(self.hList, 1, 2, 5, 1, Qt.AlignLeft)
+        self.layout.addWidget(self.hSpinBox, 1, 3)
+        self.layout.addWidget(self.hPercentButton, 2, 3)
+        self.layout.addWidget(self.hPixelButton, 3, 3)
+        self.layout.addWidget(self.hAddButton, 4, 3)
+        self.layout.addWidget(self.hDeleteButton, 5, 3)
+
+    def updateVIndentType(self, button: QRadioButton):
+        if button.text() == 'Процентов':
+            self.vSpinBox.setMaximum(100)
+            self.currentVIndentType = 1
+        else:
+            self.vSpinBox.setMaximum(self.resolution[0])
+            self.currentVIndentType = 0
+
+    def updateHIndentType(self, button: QRadioButton):
+        if button.text() == 'Процентов':
+            self.hSpinBox.setMaximum(100)
+            self.currentHIndentType = 1
+        else:
+            self.hSpinBox.setMaximum(self.resolution[0])
+            self.currentHIndentType = 0
+
+    def addVLine(self):
+        if self.currentVIndentType == -1:
+            return
+        elif self.currentVIndentType == 1:
+            self.vList.addItem(f"{self.vSpinBox.value()} %")
+        else:
+            self.vList.addItem(f"{self.vSpinBox.value()} px")
+
+        self.sortV()
+        self.signals.added.emit(1, self.currentVIndentType, self.vSpinBox.value())
+
+    def addHLine(self):
+        if self.currentHIndentType == -1:
+            return
+        elif self.currentHIndentType == 1:
+            self.hList.addItem(f"{self.hSpinBox.value()} %")
+        else:
+            self.hList.addItem(f"{self.hSpinBox.value()} px")
+
+        self.sortH()
+        self.signals.added.emit(0, self.currentHIndentType, self.hSpinBox.value())
+
+    def sortV(self):
+        lines = [self.vList.item(i).text() for i in range(self.vList.count())]
+        self.vList.clear()
+        lines.sort(key=lambda string:
+        int(string.split()[0]) if string[-1] == 'x' else self.resolution[0] / 100 * int(string.split()[0]))
+        for i in lines:
+            self.vList.addItem(i)
+
+    def sortH(self):
+        lines = [self.hList.item(i).text() for i in range(self.hList.count())]
+        self.hList.clear()
+        lines.sort(key=lambda string:
+        int(string.split()[0]) if string[-1] == 'x' else self.resolution[1] / 100 * int(string.split()[0]))
+        for i in lines:
+            self.hList.addItem(i)
+
+    def deleteVLine(self):
+        if self.vList.currentRow() == -1:
+            return
+
+        selectedItemText = self.vList.currentItem().text()
+        self.vList.takeItem(self.vList.currentRow())
+        self.signals.deleted.emit(1, 0 if selectedItemText[-1] == 'x' else 1, int(selectedItemText.split()[0]))
+
+    def deleteHLine(self):
+        if self.hList.currentRow() == -1:
+            return
+
+        selectedItemText = self.hList.currentItem().text()
+        self.hList.takeItem(self.hList.currentRow())
+        self.signals.deleted.emit(0, 0 if selectedItemText[-1] == 'x' else 1, int(selectedItemText.split()[0]))

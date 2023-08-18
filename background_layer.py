@@ -10,6 +10,8 @@ class BackgroundLayer(QWidget):
         self.setMinimumSize(width, height)
         self.setMaximumSize(width, height)
 
+        self.active = False
+
         self.pixmap = QPixmap("checkerboard.png").scaled(width, height, aspectRatioMode=Qt.IgnoreAspectRatio)
 
     def paintEvent(self, event):
