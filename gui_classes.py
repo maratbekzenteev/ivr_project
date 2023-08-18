@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel, QToolButton, QVBoxLayout,
                              QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QSpinBox, QSlider, QColorDialog,
-                             QLineEdit, QRadioButton, QButtonGroup)
+                             QLineEdit, QRadioButton, QButtonGroup, QAbstractButton)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QPalette, QBrush, QColor, QPainter, QPen, QIcon
 from PyQt5.QtCore import Qt, QRect, pyqtSignal, pyqtSlot, QObject, QSize
 from colorsys import hsv_to_rgb, rgb_to_hsv
@@ -736,7 +736,7 @@ class GridToolbar(QWidget):
         self.layout.addWidget(self.hAddButton, 4, 3)
         self.layout.addWidget(self.hDeleteButton, 5, 3)
 
-    @pyqtSlot(QRadioButton)
+    @pyqtSlot(QAbstractButton)
     def updateVIndentType(self, button: QRadioButton):
         if button.text() == 'Процентов':
             self.vSpinBox.setMaximum(100)
@@ -745,7 +745,7 @@ class GridToolbar(QWidget):
             self.vSpinBox.setMaximum(self.resolution[0])
             self.currentVIndentType = 0
 
-    @pyqtSlot(QRadioButton)
+    @pyqtSlot(QAbstractButton)
     def updateHIndentType(self, button: QRadioButton):
         if button.text() == 'Процентов':
             self.hSpinBox.setMaximum(100)
