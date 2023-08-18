@@ -3,10 +3,14 @@ from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWi
                              QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect, pyqtSlot
-from bitmap_layer import BitmapLayer
-from grid_layer import GridLayer
-from background_layer import BackgroundLayer
-from gui_classes import BitmapToolbar, LayerToolbar, GridToolbar, LayerList
+from bitmapLayer import BitmapLayer
+from gridLayer import GridLayer
+from backgroundLayer import BackgroundLayer
+from bitmapToolbar import BitmapToolbar
+from layerToolbar import LayerToolbar
+from gridToolbar import GridToolbar
+from layerList import LayerList
+
 
 # Договорённости по именованию переменных:
 # - Названия переменных пишутся в стиле camelCase, чтобы избежать смешения двух стилей (в PyQt всё пишется этим стилем)
