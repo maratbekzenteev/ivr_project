@@ -30,5 +30,13 @@ class LayerToolbar(QWidget):
         self.newShapeLayerButton.setIconSize(QSize(64, 64))
         self.newShapeLayerButton.setIcon(QIcon('tmp_icon.png'))
 
+        self.newImageLayerButton = QToolButton()
+        self.newImageLayerButton.setText('Новый слой-картинка')
+        self.newImageLayerButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.newImageLayerButton.setAutoRaise(True)
+        self.newImageLayerButton.setIconSize(QSize(64, 64))
+        self.newImageLayerButton.setIcon(QIcon('tmp_icon.png'))
+
         self.layout.addWidget(self.newBitmapLayerButton, 0, 0, alignment=Qt.AlignLeft)
         self.layout.addWidget(self.newShapeLayerButton, 1, 0, alignment=Qt.AlignLeft)
+        self.layout.addWidget(self.newImageLayerButton, 0, 1, alignment=Qt.AlignLeft)

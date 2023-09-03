@@ -44,6 +44,16 @@ class LayerList(QWidget):
             f'Холст ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.layerCount))
         self.layerCount += 1
         self.highestZ += 1
+        self.connectNewItem()
+
+    def newImageLayer(self):
+        self.layout.addWidget(LayerListItem(
+            f'Картинка ' + str(self.highestZ + 1), 'img', self.highestZ, self.layerCount))
+        self.layerCount += 1
+        self.highestZ += 1
+        self.connectNewItem()
+
+    def connectNewItem(self):
         self.layout.itemAt(self.layerCount - 1).widget().signals.activated.connect(self.activateLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.deactivated.connect(self.deactivateLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.shown.connect(self.showLayer)

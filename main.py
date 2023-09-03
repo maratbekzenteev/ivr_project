@@ -5,6 +5,7 @@ from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect, pyqtSlot
 from bitmapLayer import BitmapLayer
 from gridLayer import GridLayer
+from imageLayer import ImageLayer
 from backgroundLayer import BackgroundLayer
 from bitmapToolbar import BitmapToolbar
 from layerToolbar import LayerToolbar
@@ -53,6 +54,7 @@ class Window(QWidget):
 
         self.tab.addTab(LayerToolbar(), "Слои")
         self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.addBitmapLayer)
+        self.tab.widget(1).newImageLayerButton.clicked.connect(self.addImageLayer)
 
         self.tab.addTab(GridToolbar(self.resolution), "Сетка")
         self.tab.widget(2).signals.added.connect(self.addGridLine)
@@ -82,6 +84,8 @@ class Window(QWidget):
         self.scene.items()[-1].setZValue(1024)
         self.preview.setScene(self.scene)
 
+        # self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution))
+
         self.layers.newStaticLayer('Фон', 0)
         self.layers.newStaticLayer('Сетка', 1024)
 
@@ -107,11 +111,18 @@ class Window(QWidget):
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newBitmapLayer()
 
+    @pyqtSlot()
+    def addImageLayer(self):
+        self.highestZ += 1
+        self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution))
+        self.scene.items()[-1].setZValue(self.highestZ)
+        self.layers.newImageLayer()
+
     # Обновление цвета, толщины и инструмента рисования на слое. В будущем содержимое будет передаваться в классе State
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     @pyqtSlot()
     def updateLayerState(self):
-        if self.currentLayer != -1:
+        if self.currentLayer != -1 and self.scene.items()[self.currentLayer].widget() is BitmapLayer:
             self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(0).color,
                                                                            self.tab.widget(0).width,
                                                                            self.tab.widget(0).tool)
@@ -163,6 +174,7 @@ class Window(QWidget):
     @pyqtSlot(int, int, int)
     def deleteGridLine(self, direction: int, indentType: int, indent: int) -> None:
         self.scene.items()[1].widget().deleteLine(direction, indentType, indent)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
