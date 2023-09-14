@@ -25,6 +25,7 @@ class ToolSelector(QWidget):
         self.setLayout(self.layout)
 
         self.buttonToState = dict()
+        self.indexToState = []
         self.state = 'none'
 
         for i in range(len(button_names)):
@@ -42,6 +43,7 @@ class ToolSelector(QWidget):
     def setStates(self, *states: str) -> None:
         for i in range(len(states)):
             self.buttonToState[self.layout.itemAtPosition(0, i).widget().text()] = states[i]
+            self.indexToState.append(states[i])
 
     # Присвоение кнопкам иконок, названия которых перечислены в аргументах в порядке следованя кнопок слева направо
     def setIcons(self, *icons):
@@ -55,7 +57,7 @@ class ToolSelector(QWidget):
         if self.sender().isChecked():
             self.state = self.buttonToState[self.sender().text()]
 
-            for i in range(len(self.buttonToState)):
+            for i in range(len(self.indexToState)):
                 self.layout.itemAtPosition(0, i).widget().setChecked(False)
             self.sender().setChecked(True)
 
@@ -63,3 +65,9 @@ class ToolSelector(QWidget):
             self.state = 'none'
 
         self.signals.valueChanged.emit()
+
+    def setState(self, state):
+        for i in range(len(self.indexToState)):
+            self.layout.itemAtPosition(0, i).widget().setChecked(False)
+        if state != 'none':
+            self.layout.itemAtPosition(0, self.indexToState.index(state)).widget().setChecked(True)

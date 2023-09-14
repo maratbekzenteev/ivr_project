@@ -32,3 +32,9 @@ class GridSignals(QObject):
     added = pyqtSignal(int, int, int)
     # h/v, indentType, val
     deleted = pyqtSignal(int, int, int)
+
+
+class ImageSignals(QObject):
+    # size, alignment, tool
+    stateChanged = pyqtSignal(int, str, str)
+    imageChanged = pyqtSignal(str)

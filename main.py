@@ -8,6 +8,7 @@ from gridLayer import GridLayer
 from imageLayer import ImageLayer
 from backgroundLayer import BackgroundLayer
 from bitmapToolbar import BitmapToolbar
+from imageToolbar import ImageToolbar
 from layerToolbar import LayerToolbar
 from gridToolbar import GridToolbar
 from layerList import LayerList
@@ -49,8 +50,8 @@ class Window(QWidget):
         self.preview = QGraphicsView(self)
         self.tab = QTabWidget(self)
 
-        self.tab.addTab(BitmapToolbar(), "Рисование")
-        self.tab.widget(0).signals.valueChanged.connect(self.updateLayerState)
+        self.tab.addTab(BitmapToolbar(), "Холст")
+        self.tab.widget(0).signals.valueChanged.connect(self.updateBitmapLayerState)
 
         self.tab.addTab(LayerToolbar(), "Слои")
         self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.addBitmapLayer)
@@ -59,6 +60,10 @@ class Window(QWidget):
         self.tab.addTab(GridToolbar(self.resolution), "Сетка")
         self.tab.widget(2).signals.added.connect(self.addGridLine)
         self.tab.widget(2).signals.deleted.connect(self.deleteGridLine)
+
+        self.tab.addTab(ImageToolbar(), "Картинка")
+        self.tab.widget(3).signals.stateChanged.connect(self.updateImageLayerState)
+        self.tab.widget(3).signals.imageChanged.connect(self.updateImageLayerImage)
 
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
@@ -114,18 +119,34 @@ class Window(QWidget):
     @pyqtSlot()
     def addImageLayer(self):
         self.highestZ += 1
-        self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution))
+        self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newImageLayer()
 
-    # Обновление цвета, толщины и инструмента рисования на слое. В будущем содержимое будет передаваться в классе State
+    # Обновление цвета, толщины и инструмента рисования на слое
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     @pyqtSlot()
-    def updateLayerState(self):
-        if self.currentLayer != -1 and self.scene.items()[self.currentLayer].widget() is BitmapLayer:
+    def updateBitmapLayerState(self):
+        if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), BitmapLayer):
             self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(0).color,
                                                                            self.tab.widget(0).width,
                                                                            self.tab.widget(0).tool)
+
+    @pyqtSlot(int, str, str)
+    def updateImageLayerState(self, size, alignment, tool):
+        if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
+            self.scene.items()[self.currentLayer].widget().updateState(size, alignment, tool)
+
+    @pyqtSlot(str)
+    def updateImageLayerImage(self, imagePath):
+        if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
+            self.scene.items()[self.currentLayer].widget().updateImage(imagePath)
+
+    def updateImageToolbarState(self):
+        self.tab.widget(3).filePath = self.scene.items()[self.currentLayer].widget().imagePath
+        self.tab.widget(3).size = self.scene.items()[self.currentLayer].widget().size
+        self.tab.widget(3).alignmentSelector.setState(self.scene.items()[self.currentLayer].widget().alignment)
+        self.tab.widget(3).toolSelector.setState(self.scene.items()[self.currentLayer].widget().tool)
 
     # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
@@ -138,7 +159,10 @@ class Window(QWidget):
         self.scene.items()[index].widget().active = True
         self.currentLayer = index
 
-        self.updateLayerState()
+        if isinstance(self.scene.items()[self.currentLayer].widget(), BitmapLayer):
+            self.updateBitmapLayerState()
+        elif isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
+            self.updateImageToolbarState()
 
     # Деактивация слоя. Слот для self.layers.signals.deactivated.
     # Снимает выделение с ранее выделенного слоя (который и послал сигнал),
