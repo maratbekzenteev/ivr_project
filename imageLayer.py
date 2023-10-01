@@ -50,6 +50,53 @@ class ImageLayer(QWidget):
         self.resolution = width, height
         self.repaint()
 
+    def findBoundaryGridLines(self, x1, y1, x2, y2):
+        leftGridLine = 0
+        while leftGridLine < len(self.gridLines[1]) and \
+                self.gridLineToOffset(1, *self.gridLines[1][leftGridLine]) <= x1:
+            leftGridLine += 1
+        leftGridLine -= 1
+
+        topGridLine = 0
+        while topGridLine < len(self.gridLines[0]) and \
+                self.gridLineToOffset(0, *self.gridLines[0][topGridLine]) <= y1:
+            topGridLine += 1
+        topGridLine -= 1
+
+        rightGridLine = len(self.gridLines[1]) - 1
+        while rightGridLine > -1 and self.gridLineToOffset(1, *self.gridLines[1][rightGridLine]) >= x2:
+            rightGridLine -= 1
+        rightGridLine += 1
+
+        bottomGridLine = len(self.gridLines[0]) - 1
+        while bottomGridLine > -1 and self.gridLineToOffset(0, *self.gridLines[0][bottomGridLine]) >= y2:
+            bottomGridLine -= 1
+        bottomGridLine += 1
+
+        return leftGridLine, rightGridLine, topGridLine, bottomGridLine
+
+    def drawGridRect(self, painter):
+        if not self.drawing or self.tool != 'grid':
+            return
+
+        qp = painter
+        qp.setPen(Qt.DashLine)
+
+        x1, y1 = self.lastMousePos.x(), self.lastMousePos.y()
+        x2, y2 = self.curMousePos.x(), self.curMousePos.y()
+        x1, x2 = min(x1, x2), max(x1, x2)
+        y1, y2 = min(y1, y2), max(y1, y2)
+        x1, y1, x2, y2 = max(x1, 1), max(y1, 1), min(x2, self.resolution[0] - 1), min(y2, self.resolution[1] - 1)
+        qp.drawRect(x1, y1, x2 - x1, y2 - y1)
+
+        leftGridLine, rightGridLine, topGridLine, bottomGridLine = self.findBoundaryGridLines(x1, y1, x2, y2)
+        qp.fillRect(QRect(QPoint(self.gridLineToOffset(1, *self.gridLines[1][leftGridLine]),
+                                 self.gridLineToOffset(0, *self.gridLines[0][topGridLine])),
+                          QPoint(self.gridLineToOffset(1, *self.gridLines[1][rightGridLine]),
+                                 self.gridLineToOffset(0, *self.gridLines[0][bottomGridLine]))),
+                    QBrush(QColor(0, 0, 255, alpha=64))
+                    )
+
     def paintEvent(self, event):
         qp = QPainter(self)
 
@@ -62,10 +109,12 @@ class ImageLayer(QWidget):
             qp.drawImage(QRect(QPoint(leftBorder + self.xOffset, topBorder + self.yOffset),
                                QPoint(rightBorder + self.xOffset, bottomBorder + self.yOffset)),
                          self.image)
+            self.drawGridRect(qp)
             return
 
         if self.alignment == 'none':
             qp.drawImage(self.xOffset, self.yOffset, self.image)
+            self.drawGridRect(qp)
             return
 
         if self.alignment in {'lt', 'left', 'lb'}:
@@ -83,6 +132,8 @@ class ImageLayer(QWidget):
             y = bottomBorder - self.image.height()
 
         qp.drawImage(x + self.xOffset, y + self.yOffset, self.image)
+
+        self.drawGridRect(qp)
 
     def gridLineToOffset(self, direction, indentType, indent):
         return int(self.resolution[direction ^ 1] / 100 * indent) if indentType == 1 else indent
@@ -121,10 +172,10 @@ class ImageLayer(QWidget):
                 self.xOffset += event.pos().x() - self.lastMousePos.x()
                 self.yOffset += event.pos().y() - self.lastMousePos.y()
                 self.lastMousePos = event.pos()
-
-                self.repaint()
             elif self.tool == 'grid':
-                pass
+                self.curMousePos = event.pos()
+
+            self.repaint()
         elif not self.active and self.parent.currentLayer != -1:
             self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
 
@@ -133,6 +184,20 @@ class ImageLayer(QWidget):
             self.drawing = False
 
             if self.tool == 'grid':
-                pass
+                x1, y1 = self.lastMousePos.x(), self.lastMousePos.y()
+                x2, y2 = self.curMousePos.x(), self.curMousePos.y()
+                x1, x2 = min(x1, x2), max(x1, x2)
+                y1, y2 = min(y1, y2), max(y1, y2)
+                x1, y1, x2, y2 = max(x1, 1), max(y1, 1), \
+                                 min(x2, self.resolution[0] - 1), min(y2, self.resolution[1] - 1)
+
+                leftGridLine, rightGridLine, topGridLine, bottomGridLine = self.findBoundaryGridLines(x1, y1, x2, y2)
+
+                self.leftBorder = self.gridLines[1][leftGridLine]
+                self.rightBorder = self.gridLines[1][rightGridLine]
+                self.topBorder = self.gridLines[0][topGridLine]
+                self.bottomBorder = self.gridLines[0][bottomGridLine]
+
+                self.repaint()
         elif not self.active and self.parent.currentLayer != -1:
             self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)

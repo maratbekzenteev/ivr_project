@@ -69,6 +69,8 @@ class BitmapLayer(QWidget):
         qp.drawImage(0, 0, self.bitmap)
 
         if self.drawing:
+            qp.setPen(Qt.DashLine)
+
             if self.tool == 'rect':
                 x1, y1 = self.lastMousePos.x(), self.lastMousePos.y()
                 x2, y2 = self.curMousePos.x(), self.curMousePos.y()

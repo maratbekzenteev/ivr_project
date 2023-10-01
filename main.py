@@ -37,7 +37,7 @@ class Window(QWidget):
     # Инициализация графических элементов, подключение сигналов к слотам
     def __init__(self):
         super().__init__()
-        self.setFont(QFont("Segoe UI", 12))
+        # self.setFont(QFont("Segoe UI", 12))
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
