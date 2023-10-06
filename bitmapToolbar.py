@@ -24,6 +24,7 @@ from toolSelector import ToolSelector
 # - - - 'brsh' - кисть. След кисти идёт по траектории движения мыши с опущенной ЛКМ. Форма следа округлая (Qt.RoundCap)
 # - - - 'pen' - ручка. То же, что и кисть, но с более угловатой формой следа (Qt.SquareCap)
 # - - - 'penc' - карандаш. То же, что и кисть, но с более отрывистой формой следа (Qt.FlatCap)
+# - - - 'ersr'
 # - - - 'line' - отрезок. Соединяет отрезком точку нажания и точку отпускания ЛКМ.
 # - - - 'rect' - прямоугольник. Строит прямоугольник по диагонали, заданной пользователем как отрезок, соединяющий
 # - - - - точку нажатия и точку отпускания ЛКМ, со сторонами, параллельными осям координат
@@ -53,9 +54,9 @@ class BitmapToolbar(QWidget):
         self.widthSlider.valueChanged.connect(self.updateValues)
 
         self.tool = 'none'
-        self.toolSelector = ToolSelector('Кисть', 'Ручка', 'Карандаш', 'Прямая', 'Прямоугольник', 'Эллипс', 'Заливка')
-        self.toolSelector.setIcons(*(['tmp_icon.png'] * 7))
-        self.toolSelector.setStates('brsh', 'pen', 'penc', 'line', 'rect', 'oval', 'fill')
+        self.toolSelector = ToolSelector('Кисть', 'Ручка', 'Карандаш', 'Ластик', 'Прямая', 'Прямоугольник', 'Эллипс', 'Заливка')
+        self.toolSelector.setIcons(*(['tmp_icon.png'] * 8))
+        self.toolSelector.setStates('brsh', 'pen', 'penc', 'ersr', 'line', 'rect', 'oval', 'fill')
         self.toolSelector.signals.valueChanged.connect(self.updateValues)
 
         self.layout.addWidget(self.colorPicker, 0, 0)

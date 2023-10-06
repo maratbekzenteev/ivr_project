@@ -33,6 +33,7 @@ class LayerListItem(QWidget):
         self.layout = QGridLayout(self)
         self.layout.setSpacing(0)
         self.setLayout(self.layout)
+        self.setMaximumWidth(240)
 
         self.signals = LayerSignals()
 
@@ -44,17 +45,20 @@ class LayerListItem(QWidget):
 
         self.nameField = QLineEdit(name)
 
-        self.activateButton = QPushButton('⌘')
+        self.activateButton = QPushButton('')
         self.activateButton.clicked.connect(self.activate)
 
-        self.upButton = QPushButton('Выше')
+        self.upButton = QPushButton('')
         self.upButton.clicked.connect(self.moveUp)
 
-        self.downButton = QPushButton('Ниже')
+        self.downButton = QPushButton('')
         self.downButton.clicked.connect(self.moveDown)
 
-        self.hideButton = QPushButton('Глаз')
+        self.hideButton = QPushButton('')
         self.hideButton.clicked.connect(self.changeVisibility)
+
+        self.deleteButton = QPushButton('')
+        self.deleteButton.clicked.connect(self.delete)
 
         if static:
             self.nameField.setDisabled(True)
@@ -62,12 +66,14 @@ class LayerListItem(QWidget):
             self.upButton.hide()
             self.downButton.hide()
             self.activateButton.hide()
+            self.deleteButton.hide()
 
         self.layout.addWidget(self.activateButton, 0, 0, 2, 1, Qt.AlignLeft)
-        self.layout.addWidget(self.nameField, 0, 1, 1, 3, Qt.AlignCenter)
+        self.layout.addWidget(self.nameField, 0, 1, 1, 4, Qt.AlignCenter)
         self.layout.addWidget(self.upButton, 1, 1)
         self.layout.addWidget(self.downButton, 1, 2)
         self.layout.addWidget(self.hideButton, 1, 3)
+        self.layout.addWidget(self.deleteButton, 1, 4)
 
         self.setAutoFillBackground(True)
         palette = self.palette()
@@ -82,7 +88,7 @@ class LayerListItem(QWidget):
         palette.setBrush(QPalette.Window, QBrush(QColor(
             0, 0, 255, alpha=64) if self.active else QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
         palette.setBrush(QPalette.Text, QBrush(QColor(
-            0, 0, 0) if self.visible else QColor(0, 0, 0, alpha=128), Qt.SolidPattern))
+            0, 0, 0) if self.visible else QColor(0, 0, 0, alpha=64), Qt.SolidPattern))
         self.setPalette(palette)
 
     # Обработчик нажатия self.activateButton, слот сигнала self.activateButton.clicked.
@@ -124,3 +130,6 @@ class LayerListItem(QWidget):
     @pyqtSlot()
     def moveDown(self):
         self.signals.movedDown.emit(self.index)
+
+    def delete(self):
+        self.signals.deleted.emit(self.index)

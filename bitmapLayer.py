@@ -81,6 +81,10 @@ class BitmapLayer(QWidget):
                 x1, y1 = self.lastMousePos.x(), self.lastMousePos.y()
                 x2, y2 = self.curMousePos.x(), self.curMousePos.y()
                 qp.drawEllipse(min(x1, x2), min(y1, y2), abs(x1 - x2), abs(y1 - y2))
+            elif self.tool == 'ersr':
+                qp.drawEllipse(self.lastMousePos.x() - self.pen.width() // 2,
+                               self.lastMousePos.y() - self.pen.width() // 2,
+                               self.pen.width(), self.pen.width())
 
     # Обработчик нажатия мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
     # то event будет приходить ему. В таком случае слой через self.parent передает нажатие на нужный слой.
@@ -105,9 +109,11 @@ class BitmapLayer(QWidget):
             if self.parent.currentLayer != -1:
                 self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
         elif event.buttons() & Qt.LeftButton & self.drawing & (self.tool != 'none'):
-            if self.tool in {'brsh', 'pen', 'penc'}:
+            if self.tool in {'brsh', 'pen', 'penc', 'ersr'}:
                 qp = QPainter(self.bitmap)
                 qp.setPen(self.pen)
+                if self.tool == 'ersr':
+                    qp.setCompositionMode(QPainter.CompositionMode_Clear)
                 qp.drawLine(self.lastMousePos, event.pos())
 
                 self.lastMousePos = event.pos()

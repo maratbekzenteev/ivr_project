@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel,
-                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut)
+                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QScrollArea)
 from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
 from PyQt5.QtCore import Qt, QRect, pyqtSlot
 from bitmapLayer import BitmapLayer
@@ -70,6 +70,7 @@ class Window(QWidget):
         self.layers.signals.shown.connect(self.showLayer)
         self.layers.signals.hidden.connect(self.hideLayer)
         self.layers.signals.swappedLayers.connect(self.swapLayers)
+        self.layers.signals.deleted.connect(self.deleteLayer)
 
         self.layout.addWidget(self.layers, 1, 0)
         self.layout.addWidget(self.preview, 1, 1, alignment=Qt.AlignCenter)
@@ -181,6 +182,11 @@ class Window(QWidget):
     @pyqtSlot(int)
     def hideLayer(self, index: int) -> None:
         self.scene.items()[index].widget().hide()
+
+    @pyqtSlot(int)
+    def deleteLayer(self, index):
+        deletedItem = self.scene.items()[index]
+        self.scene.removeItem(deletedItem)
 
     # Обменивает слои их высотами (один перемещается под другой). Слот для self.layers.signals.swappedLayers.
     # Используется при перемещении слоя пользователем как выше, так и ниже.

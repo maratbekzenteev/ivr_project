@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QPushButton, QGridLayout
 from PyQt5.QtGui import QPalette, QBrush, QColor
 from PyQt5.QtCore import Qt, pyqtSlot
 from signals import LayerSignals
@@ -13,7 +13,7 @@ from layerListItem import LayerListItem
 # - - Это сделано, чтобы новые слои добавлялись сверху, а не снизу: так пользователю легче понять, что слой выше всех
 # - Объекты класса LayerListItem, в которых поддерживается вся необходимая информация о каждом слое в отдельности
 # Аттрибуты:
-# - self.hightestZ - int, класс, поддерживающий самое высокое значение self.z у любого из слоёв за все время
+# - self.highestZ - int, класс, поддерживающий самое высокое значение self.z у любого из слоёв за все время
 # - - (т.е. удаленные слои тоже считаются). Это нужно для нахождения "безопасного" значения self.z для нового слоя
 # - self.layerCount - int, текущее к-во слоев
 class LayerList(QWidget):
@@ -21,11 +21,38 @@ class LayerList(QWidget):
     def __init__(self, parent: QWidget):
         super().__init__(parent)
 
+        self.parent = parent
+
+        self.setMinimumWidth(270)
+        self.outerLayout = QGridLayout(self)
+        self.outerLayout.setSpacing(0)
+        self.outerLayout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.outerLayout)
+
+        self.newBitmapButton = QPushButton('')
+        self.newImageButton = QPushButton('')
+        self.newShapeButton = QPushButton('')
+        self.newTextButton = QPushButton('')
+
+        self.newBitmapButton.clicked.connect(self.parent.addBitmapLayer)
+        self.newImageButton.clicked.connect(self.parent.addImageLayer)
+        self.outerLayout.addWidget(self.newBitmapButton, 0, 0)
+        self.outerLayout.addWidget(self.newImageButton, 0, 1)
+        self.outerLayout.addWidget(self.newShapeButton, 0, 2)
+        self.outerLayout.addWidget(self.newTextButton, 0, 3)
+
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setMinimumWidth(270)
+        self.outerLayout.addWidget(self.scrollArea, 1, 0, 1, 4, Qt.AlignJustify)
+        self.itemContainer = QWidget()
+        self.scrollArea.setWidget(self.itemContainer)
+        self.scrollArea.setWidgetResizable(True)
+
         self.layout = QVBoxLayout(self)
         self.layout.setDirection(QVBoxLayout.BottomToTop)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.layout.setSpacing(0)
-        self.setLayout(self.layout)
+        self.itemContainer.setLayout(self.layout)
 
         self.signals = LayerSignals()
 
@@ -41,14 +68,14 @@ class LayerList(QWidget):
     # обновляет переменные состояния, подключает сигналы к слотам
     def newBitmapLayer(self):
         self.layout.addWidget(LayerListItem(
-            f'Холст ' + str(self.highestZ + 1), 'bmp', self.highestZ, self.layerCount))
+            f'Холст ' + str(self.highestZ - 1), 'bmp', self.highestZ, self.layerCount))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
 
     def newImageLayer(self):
         self.layout.addWidget(LayerListItem(
-            f'Картинка ' + str(self.highestZ + 1), 'img', self.highestZ, self.layerCount))
+            f'Картинка ' + str(self.highestZ - 1), 'img', self.highestZ, self.layerCount))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
@@ -60,6 +87,10 @@ class LayerList(QWidget):
         self.layout.itemAt(self.layerCount - 1).widget().signals.hidden.connect(self.hideLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.movedUp.connect(self.moveUpLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.movedDown.connect(self.moveDownLayer)
+        self.layout.itemAt(self.layerCount - 1).widget().signals.deleted.connect(self.deleteLayer)
+        self.activateLayer(self.layerCount - 1)
+        self.layout.itemAt(self.layerCount - 1).widget().active = True
+        self.layout.itemAt(self.layerCount - 1).widget().updatePalette()
 
     def newStaticLayer(self, name, z):
         self.layout.addWidget(LayerListItem(
@@ -206,3 +237,23 @@ class LayerList(QWidget):
 
         # Сигналом swappedLayers сообщается необходимость поменять 2 слоя местами на сцене
         self.signals.swappedLayers.emit(index, self.layout.itemAt(inListIndex).widget().index)
+
+    @pyqtSlot(int)
+    def deleteLayer(self, index):
+        if self.parent.currentLayer == index:
+            self.parent.currentLayer = -1
+        elif self.parent.currentLayer > index:
+            self.parent.currentLayer -= 1
+
+        inListIndex = -1
+        for i in range(self.layerCount):
+            if self.layout.itemAt(i).widget().index == index:
+                inListIndex = i
+            elif self.layout.itemAt(i).widget().index > index:
+                self.layout.itemAt(i).widget().index -= 1
+
+        self.layerCount -= 1
+        deletedWidget = self.layout.itemAt(inListIndex).widget()
+        self.layout.removeWidget(deletedWidget)
+
+        self.signals.deleted.emit(index)

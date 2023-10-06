@@ -26,6 +26,8 @@ class LayerSignals(QObject):
     # Два слоя (теоретически, не обязательно соседние) были поменяны местами
     swappedLayers = pyqtSignal(int, int)
 
+    deleted = pyqtSignal(int)
+
 
 class GridSignals(QObject):
     # h/v, indentType, val
