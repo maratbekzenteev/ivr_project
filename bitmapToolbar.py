@@ -54,7 +54,7 @@ class BitmapToolbar(QWidget):
         self.widthSlider.valueChanged.connect(self.updateValues)
 
         self.tool = 'none'
-        self.toolSelector = ToolSelector('Кисть', 'Ручка', 'Карандаш', 'Ластик', 'Прямая', 'Прямоугольник', 'Эллипс', 'Заливка')
+        self.toolSelector = ToolSelector('Кисть', 'Ручка', 'Карандаш', 'Ластик', 'Отрезок', 'Прямоугольник', 'Эллипс', 'Заливка')
         self.toolSelector.setIcons(*(['tmp_icon.png'] * 8))
         self.toolSelector.setStates('brsh', 'pen', 'penc', 'ersr', 'line', 'rect', 'oval', 'fill')
         self.toolSelector.signals.valueChanged.connect(self.updateValues)

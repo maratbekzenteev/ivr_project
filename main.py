@@ -6,11 +6,13 @@ from PyQt5.QtCore import Qt, QRect, pyqtSlot
 from bitmapLayer import BitmapLayer
 from gridLayer import GridLayer
 from imageLayer import ImageLayer
+from shapeLayer import ShapeLayer
 from backgroundLayer import BackgroundLayer
 from bitmapToolbar import BitmapToolbar
 from imageToolbar import ImageToolbar
 from layerToolbar import LayerToolbar
 from gridToolbar import GridToolbar
+from shapeToolbar import ShapeToolbar
 from layerList import LayerList
 
 
@@ -56,6 +58,7 @@ class Window(QWidget):
         self.tab.addTab(LayerToolbar(), "Слои")
         self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.addBitmapLayer)
         self.tab.widget(1).newImageLayerButton.clicked.connect(self.addImageLayer)
+        self.tab.widget(1).newShapeLayerButton.clicked.connect(self.addShapeLayer)
 
         self.tab.addTab(GridToolbar(self.resolution), "Сетка")
         self.tab.widget(2).signals.added.connect(self.addGridLine)
@@ -64,6 +67,9 @@ class Window(QWidget):
         self.tab.addTab(ImageToolbar(), "Картинка")
         self.tab.widget(3).signals.stateChanged.connect(self.updateImageLayerState)
         self.tab.widget(3).signals.imageChanged.connect(self.updateImageLayerImage)
+
+        self.tab.addTab(ShapeToolbar(), "Фигура")
+        self.tab.widget(4).signals.valueChanged.connect(self.updateShapeLayerState)
 
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
@@ -124,6 +130,13 @@ class Window(QWidget):
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newImageLayer()
 
+    @pyqtSlot()
+    def addShapeLayer(self):
+        self.highestZ += 1
+        self.scene.addWidget(ShapeLayer(*self.resolution, self))
+        self.scene.items()[-1].setZValue(self.highestZ)
+        self.layers.newShapeLayer()
+
     # Обновление цвета, толщины и инструмента рисования на слое
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     @pyqtSlot()
@@ -149,6 +162,22 @@ class Window(QWidget):
         self.tab.widget(3).alignmentSelector.setState(self.scene.items()[self.currentLayer].widget().alignment)
         self.tab.widget(3).toolSelector.setState(self.scene.items()[self.currentLayer].widget().tool)
 
+    @pyqtSlot()
+    def updateShapeLayerState(self):
+        if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), ShapeLayer):
+            self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(4).lineColor,
+                                                                       self.tab.widget(4).fillColor,
+                                                                       self.tab.widget(4).width,
+                                                                       self.tab.widget(4).tool,
+                                                                       self.tab.widget(4).shape)
+
+    def updateShapeToolbarState(self):
+        self.tab.widget(4).setState(self.scene.items()[self.currentLayer].widget().lineColor,
+                                    self.scene.items()[self.currentLayer].widget().fillColor,
+                                    self.scene.items()[self.currentLayer].widget().width,
+                                    self.scene.items()[self.currentLayer].widget().tool,
+                                    self.scene.items()[self.currentLayer].widget().shape)
+
     # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
     # передаёт состояние панели инструментов на случай, если её состояние поменяли, пока активным был другой слой,
@@ -164,6 +193,8 @@ class Window(QWidget):
             self.updateBitmapLayerState()
         elif isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
             self.updateImageToolbarState()
+        elif isinstance(self.scene.items()[self.currentLayer].widget(), ShapeLayer):
+            self.updateShapeToolbarState()
 
     # Деактивация слоя. Слот для self.layers.signals.deactivated.
     # Снимает выделение с ранее выделенного слоя (который и послал сигнал),

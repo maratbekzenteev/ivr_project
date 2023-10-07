@@ -36,6 +36,7 @@ class LayerList(QWidget):
 
         self.newBitmapButton.clicked.connect(self.parent.addBitmapLayer)
         self.newImageButton.clicked.connect(self.parent.addImageLayer)
+        self.newShapeButton.clicked.connect(self.parent.addShapeLayer)
         self.outerLayout.addWidget(self.newBitmapButton, 0, 0)
         self.outerLayout.addWidget(self.newImageButton, 0, 1)
         self.outerLayout.addWidget(self.newShapeButton, 0, 2)
@@ -76,6 +77,13 @@ class LayerList(QWidget):
     def newImageLayer(self):
         self.layout.addWidget(LayerListItem(
             f'Картинка ' + str(self.highestZ - 1), 'img', self.highestZ, self.layerCount))
+        self.layerCount += 1
+        self.highestZ += 1
+        self.connectNewItem()
+
+    def newShapeLayer(self):
+        self.layout.addWidget(LayerListItem(
+            f'Фигура ' + str(self.highestZ - 1), 'img', self.highestZ, self.layerCount))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
