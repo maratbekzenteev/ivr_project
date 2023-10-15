@@ -108,6 +108,7 @@ class ShapeLayer(QWidget):
 
             self.drawing = True
             self.lastMousePos = event.pos()
+            self.curMousePos = event.pos()
 
             if self.tool == 'grid':
                 self.gridLines = [self.parent.scene.items()[1].widget().hLines,

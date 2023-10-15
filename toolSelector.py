@@ -22,6 +22,7 @@ class ToolSelector(QWidget):
 
         self.layout = QGridLayout(self)
         self.layout.setSpacing(0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
         self.buttonToState = dict()
@@ -35,7 +36,7 @@ class ToolSelector(QWidget):
             self.layout.itemAtPosition(0, i).widget().setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
             self.layout.itemAtPosition(0, i).widget().setAutoRaise(True)
             self.layout.itemAtPosition(0, i).widget().setCheckable(True)
-            self.layout.itemAtPosition(0, i).widget().setIconSize(QSize(96, 96))
+            self.layout.itemAtPosition(0, i).widget().setIconSize(QSize(64, 64))
 
     # Определение словаря self.buttonToState, в аргументах передаются названия состояний,
     # соответствующих каждой из кнопок в порядке слева направо. К-во состояний не должно превышать к-во кнопок,

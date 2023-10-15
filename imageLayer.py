@@ -99,6 +99,7 @@ class ImageLayer(QWidget):
 
     def paintEvent(self, event):
         qp = QPainter(self)
+        qp.setRenderHint(QPainter.Antialiasing)
 
         leftBorder = self.gridLineToOffset(1, *self.leftBorder)
         rightBorder = self.gridLineToOffset(1, *self.rightBorder)
@@ -159,6 +160,7 @@ class ImageLayer(QWidget):
 
             self.drawing = True
             self.lastMousePos = event.pos()
+            self.curMousePos = event.pos()
 
             if self.tool == 'grid':
                 self.gridLines = [self.parent.scene.items()[1].widget().hLines,

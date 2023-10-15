@@ -20,6 +20,7 @@ class ColorPreview(QWidget):
 
         self.layout = QGridLayout(self)
         self.layout.setSpacing(0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
         self.signals = Signals()

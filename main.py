@@ -7,12 +7,14 @@ from bitmapLayer import BitmapLayer
 from gridLayer import GridLayer
 from imageLayer import ImageLayer
 from shapeLayer import ShapeLayer
+from textLayer import TextLayer
 from backgroundLayer import BackgroundLayer
 from bitmapToolbar import BitmapToolbar
 from imageToolbar import ImageToolbar
 from layerToolbar import LayerToolbar
 from gridToolbar import GridToolbar
 from shapeToolbar import ShapeToolbar
+from textToolbar import TextToolbar
 from layerList import LayerList
 
 
@@ -40,6 +42,7 @@ class Window(QWidget):
     def __init__(self):
         super().__init__()
         # self.setFont(QFont("Segoe UI", 12))
+        self.setFont(QFont("Verdana", 12))
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -51,6 +54,7 @@ class Window(QWidget):
         self.layers = LayerList(self)
         self.preview = QGraphicsView(self)
         self.tab = QTabWidget(self)
+        self.tab.setMaximumHeight(196)
 
         self.tab.addTab(BitmapToolbar(), "Холст")
         self.tab.widget(0).signals.valueChanged.connect(self.updateBitmapLayerState)
@@ -70,6 +74,9 @@ class Window(QWidget):
 
         self.tab.addTab(ShapeToolbar(), "Фигура")
         self.tab.widget(4).signals.valueChanged.connect(self.updateShapeLayerState)
+
+        self.tab.addTab(TextToolbar(), "Текст")
+        self.tab.widget(5).signals.valueChanged.connect(self.updateTextLayerState)
 
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
@@ -137,6 +144,13 @@ class Window(QWidget):
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newShapeLayer()
 
+    @pyqtSlot()
+    def addTextLayer(self):
+        self.highestZ += 1
+        self.scene.addWidget(TextLayer(*self.resolution, self))
+        self.scene.items()[-1].setZValue(self.highestZ)
+        self.layers.newTextLayer()
+
     # Обновление цвета, толщины и инструмента рисования на слое
     # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
     @pyqtSlot()
@@ -178,6 +192,26 @@ class Window(QWidget):
                                     self.scene.items()[self.currentLayer].widget().tool,
                                     self.scene.items()[self.currentLayer].widget().shape)
 
+    @pyqtSlot()
+    def updateTextLayerState(self):
+        if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
+            self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(5).color,
+                                                                       self.tab.widget(5).font,
+                                                                       self.tab.widget(5).size,
+                                                                       self.tab.widget(5).fontWeight,
+                                                                       self.tab.widget(5).italic,
+                                                                       self.tab.widget(5).underline,
+                                                                       self.tab.widget(5).alignment)
+
+    def updateTextToolbarState(self):
+        self.tab.widget(5).setState(self.scene.items()[self.currentLayer].widget().color,
+                                    self.scene.items()[self.currentLayer].widget().font,
+                                    self.scene.items()[self.currentLayer].widget().size,
+                                    self.scene.items()[self.currentLayer].widget().fontWeight,
+                                    self.scene.items()[self.currentLayer].widget().italic,
+                                    self.scene.items()[self.currentLayer].widget().underline,
+                                    self.scene.items()[self.currentLayer].widget().alignment)
+
     # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
     # передаёт состояние панели инструментов на случай, если её состояние поменяли, пока активным был другой слой,
@@ -186,8 +220,16 @@ class Window(QWidget):
     def activateLayer(self, index: int) -> None:
         if self.currentLayer != -1:
             self.scene.items()[self.currentLayer].widget().active = False
+            if isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
+                self.scene.items()[self.currentLayer].setZValue(self.scene.items()[self.currentLayer].widget()
+                                                                .previousZValue)
+
         self.scene.items()[index].widget().active = True
         self.currentLayer = index
+
+        for i in range(len(self.scene.items())):
+            self.scene.items()[i].widget().setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.scene.items()[self.currentLayer].widget().setAttribute(Qt.WA_TransparentForMouseEvents, False)
 
         if isinstance(self.scene.items()[self.currentLayer].widget(), BitmapLayer):
             self.updateBitmapLayerState()
@@ -195,12 +237,20 @@ class Window(QWidget):
             self.updateImageToolbarState()
         elif isinstance(self.scene.items()[self.currentLayer].widget(), ShapeLayer):
             self.updateShapeToolbarState()
+        elif isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
+            self.scene.items()[self.currentLayer].widget().storeZValue(self.scene.items()[self.currentLayer].zValue())
+            self.scene.items()[self.currentLayer].setZValue(1023)
+            self.updateTextToolbarState()
 
     # Деактивация слоя. Слот для self.layers.signals.deactivated.
     # Снимает выделение с ранее выделенного слоя (который и послал сигнал),
     # сообщает в self.currentLayer, что никакой слой не выделен.
     @pyqtSlot(int)
     def deactivateLayer(self, index: int) -> None:
+        if isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
+            self.scene.items()[self.currentLayer].setZValue(self.scene.items()[self.currentLayer].widget()
+                                                            .previousZValue)
+
         self.scene.items()[index].widget().active = False
         self.currentLayer = -1
 

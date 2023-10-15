@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QPen, QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 
 
 # Виджет, отображающийся рядом с ползунком толщины для большей понятности назначения ползунка пользователю.
@@ -20,3 +20,6 @@ class WidthPictogram(QWidget):
         for i in range(16):
             qp.setPen(QPen(QColor(0, 0, 0), 16 - i, Qt.SolidLine, Qt.RoundCap, Qt.BevelJoin))
             qp.drawPoint(width // 2, i * height // 16)
+
+    def sizeHint(self):
+        return QSize(24, 64)

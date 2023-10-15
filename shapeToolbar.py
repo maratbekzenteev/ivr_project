@@ -28,7 +28,7 @@ class ShapeToolbar(QWidget):
         self.widthSlider = QSlider()
         self.widthSlider.setMinimum(1)
         self.widthSlider.setMaximum(32)
-        self.widthSlider.sliderMoved.connect(self.updateValues)
+        self.widthSlider.valueChanged.connect(self.updateValues)
 
         self.tool = 'none'
         self.toolSelector = ToolSelector('Привязать', 'Передвинуть')
@@ -74,4 +74,4 @@ class ShapeToolbar(QWidget):
         self.shape = shape
         self.shapeSelector.setState(shape)
         self.width = width
-        self.widthSlider.setValue(width)
+        # self.widthSlider.setValue(width)
