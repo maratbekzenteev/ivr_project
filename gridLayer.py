@@ -60,3 +60,7 @@ class GridLayer(QWidget):
                 qp.drawLine(indent, 0, indent, self.height)
             elif indentType == 1:
                 qp.drawLine(int(self.width / 100 * indent), 0, int(self.width / 100 * indent), self.height)
+
+    def setResolution(self, width, height, stretch):
+        self.width, self.height = width, height
+        self.repaint()

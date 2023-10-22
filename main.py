@@ -1,8 +1,10 @@
 import sys
-from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget, QLabel,
-                             QWidget, QListWidget, QPushButton, QGridLayout, QShortcut, QScrollArea)
-from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor
-from PyQt5.QtCore import Qt, QRect, pyqtSlot
+import traceback
+import json
+from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget,
+                             QWidget, QGridLayout, QShortcut, QFileDialog, QInputDialog, QMessageBox)
+from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor, QImage, QPainter
+from PyQt5.QtCore import Qt, QRect, pyqtSlot, QByteArray, QBuffer, QIODevice, QSize
 from bitmapLayer import BitmapLayer
 from gridLayer import GridLayer
 from imageLayer import ImageLayer
@@ -15,6 +17,7 @@ from layerToolbar import LayerToolbar
 from gridToolbar import GridToolbar
 from shapeToolbar import ShapeToolbar
 from textToolbar import TextToolbar
+from fileToolbar import FileToolbar
 from layerList import LayerList
 
 
@@ -59,10 +62,12 @@ class Window(QWidget):
         self.tab.addTab(BitmapToolbar(), "Холст")
         self.tab.widget(0).signals.valueChanged.connect(self.updateBitmapLayerState)
 
-        self.tab.addTab(LayerToolbar(), "Слои")
-        self.tab.widget(1).newBitmapLayerButton.clicked.connect(self.addBitmapLayer)
-        self.tab.widget(1).newImageLayerButton.clicked.connect(self.addImageLayer)
-        self.tab.widget(1).newShapeLayerButton.clicked.connect(self.addShapeLayer)
+        self.tab.addTab(FileToolbar(), "Файл")
+        self.tab.widget(1).saveButton.clicked.connect(self.saveFile)
+        self.tab.widget(1).openButton.clicked.connect(self.openFile)
+        self.tab.widget(1).resizeButton.clicked.connect(self.resizeFile)
+        self.tab.widget(1).newButton.clicked.connect(self.newFile)
+        self.tab.widget(1).exportButton.clicked.connect(self.exportFile)
 
         self.tab.addTab(GridToolbar(self.resolution), "Сетка")
         self.tab.widget(2).signals.added.connect(self.addGridLine)
@@ -286,9 +291,240 @@ class Window(QWidget):
     def deleteGridLine(self, direction: int, indentType: int, indent: int) -> None:
         self.scene.items()[1].widget().deleteLine(direction, indentType, indent)
 
+    @pyqtSlot()
+    def saveFile(self):
+        filePath = QFileDialog.getSaveFileName(self, 'Сохранить проект', filter='Файл проекта GrImage (*.gri)')[0]
+        if filePath == '':
+            return
+
+        output = {}
+        output['name'] = '.'.join(filePath.split('/')[-1].split('.')[:-1])
+        output['width'], output['height'] = self.resolution
+        output['highestZ'] = self.highestZ
+        output['layers'] = []
+
+        for i in range(len(self.scene.items())):
+            curWidget = self.scene.items()[i].widget()
+
+            if isinstance(curWidget, BitmapLayer):
+                byteArray = QByteArray()
+                buffer = QBuffer(byteArray)
+                buffer.open(QIODevice.WriteOnly)
+                self.scene.items()[i].widget().bitmap.save(buffer, "PNG")
+                buffer.close()
+                output['layers'].append({
+                    'type': 'bmp',
+                    'data': str(byteArray.toBase64(), 'utf_8')
+                })
+            elif isinstance(self.scene.items()[i].widget(), ImageLayer):
+                byteArray = QByteArray()
+                buffer = QBuffer(byteArray)
+                buffer.open(QIODevice.WriteOnly)
+                self.scene.items()[i].widget().image.save(buffer, "PNG")
+                buffer.close()
+                output['layers'].append({
+                    'type': 'img',
+                    'data': str(byteArray.toBase64(), 'utf_8'),
+                    'xOffset': curWidget.xOffset,
+                    'yOffset': curWidget.yOffset,
+                    'alignment': curWidget.alignment,
+                    'leftBorder': curWidget.leftBorder,
+                    'rightBorder': curWidget.rightBorder,
+                    'topBorder': curWidget.topBorder,
+                    'bottomBorder': curWidget.bottomBorder,
+                    'size': curWidget.size
+                })
+            elif isinstance(self.scene.items()[i].widget(), ShapeLayer):
+                output['layers'].append({
+                    'type': 'shp',
+                    'shape': curWidget.shape,
+                    'xOffset': curWidget.xOffset,
+                    'yOffset': curWidget.yOffset,
+                    'width': curWidget.width,
+                    'lineColor': (curWidget.lineColor.red(), curWidget.lineColor.green(), curWidget.lineColor.blue(),
+                                  curWidget.lineColor.alpha()),
+                    'fillColor': (curWidget.fillColor.red(), curWidget.fillColor.green(), curWidget.fillColor.blue(),
+                                  curWidget.fillColor.alpha()),
+                    'firstVBorder': curWidget.firstVBorder,
+                    'firstHBorder': curWidget.firstHBorder,
+                    'secondVBorder': curWidget.secondVBorder,
+                    'secondHBorder': curWidget.secondHBorder,
+                })
+            elif isinstance(self.scene.items()[i].widget(), TextLayer):
+                output['layers'].append({
+                    'type': 'txt',
+                    'text': curWidget.textEdit.toHtml(),
+                    'leftBorder': curWidget.leftBorder,
+                    'rightBorder': curWidget.rightBorder,
+                    'topBorder': curWidget.topBorder,
+                    'bottomBorder': curWidget.bottomBorder
+                })
+            elif isinstance(self.scene.items()[i].widget(), GridLayer):
+                output['layers'].append({
+                    'type': 'grd',
+                    'h': curWidget.hLines,
+                    'v': curWidget.vLines
+                })
+
+            if not isinstance(curWidget, BackgroundLayer):
+                output['layers'][-1]['z'] = self.scene.items()[i].zValue()
+                print('bib')
+                output['layers'][-1]['name'] = self.layers.getName(i)
+                print('bib2')
+                output['layers'][-1]['index'] = i
+
+        jsonObject = json.dumps(output, indent=4)
+        with open(filePath, 'w') as file:
+            file.write(jsonObject)
+
+    def clearFile(self, width=1280, height=720):
+        self.layers.clear()
+        self.resolution = width, height
+        self.currentLayer = -1
+        self.highestZ = 0
+
+        self.scene.addWidget(BackgroundLayer(*self.resolution))
+        self.scene.addWidget(GridLayer(*self.resolution))
+        self.scene.items()[-1].setZValue(1024)
+
+        self.layers.newStaticLayer('Фон', 0)
+        self.layers.newStaticLayer('Сетка', 1024)
+
+    @pyqtSlot()
+    def openFile(self):
+        filePath = QFileDialog.getOpenFileName(self, 'Открыть файл проекта', '', 'Файл проекта GrImage (*.gri)')[0]
+        if filePath == '':
+            return
+
+        with open(filePath, 'r') as file:
+            jsonObject = json.load(file)
+
+        width, height = jsonObject['width'], jsonObject['height']
+        self.clearFile(width=width, height=height)
+
+        listWidgetQueue = []
+
+        for layer in jsonObject['layers']:
+            if layer['type'] == 'grd':
+                self.scene.items()[-1].widget().hLines = list(layer['h'])
+                self.scene.items()[-1].widget().vLines = list(layer['v'])
+            elif layer['type'] == 'bmp':
+                self.scene.addWidget(BitmapLayer(*self.resolution, self))
+                self.scene.items()[-1].setZValue(layer['z'])
+                byteArray = QByteArray.fromBase64(bytes(layer['data'], 'utf-8'))
+                self.scene.items()[-1].widget().bitmap.loadFromData(byteArray)
+                # self.layers.newBitmapLayer()
+                listWidgetQueue.append((layer['z'], layer['index'], layer['type'], layer['name']))
+            elif layer['type'] == 'img':
+                self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution, self))
+                self.scene.items()[-1].setZValue(layer['z'])
+                byteArray = QByteArray.fromBase64(bytes(layer['data'], 'utf-8'))
+                self.scene.items()[-1].widget().image.loadFromData(byteArray)
+                self.scene.items()[-1].widget().xOffset = layer['xOffset']
+                self.scene.items()[-1].widget().yOffset = layer['yOffset']
+                self.scene.items()[-1].widget().alignment = layer['alignment']
+                self.scene.items()[-1].widget().leftBorder = tuple(layer['leftBorder'])
+                self.scene.items()[-1].widget().rightBorder = tuple(layer['rightBorder'])
+                self.scene.items()[-1].widget().topBorder = tuple(layer['topBorder'])
+                self.scene.items()[-1].widget().bottomBorder = tuple(layer['bottomBorder'])
+                self.scene.items()[-1].widget().size = layer['size']
+                # self.layers.newImageLayer()
+                listWidgetQueue.append((layer['z'], layer['index'], layer['type'], layer['name']))
+            elif layer['type'] == 'shp':
+                self.scene.addWidget(ShapeLayer(*self.resolution, self))
+                self.scene.items()[-1].setZValue(layer['z'])
+                self.scene.items()[-1].widget().shape = layer['shape']
+                self.scene.items()[-1].widget().xOffset = layer['xOffset']
+                self.scene.items()[-1].widget().yOffset = layer['yOffset']
+                self.scene.items()[-1].widget().width = layer['width']
+                self.scene.items()[-1].widget().lineColor = QColor(layer['lineColor'][0], layer['lineColor'][1],
+                                                                   layer['lineColor'][2], alpha=layer['lineColor'][3])
+                self.scene.items()[-1].widget().fillColor = QColor(layer['fillColor'][0], layer['fillColor'][1],
+                                                                   layer['fillColor'][2], alpha=layer['fillColor'][3])
+                self.scene.items()[-1].widget().firstVBorder = layer['firstVBorder']
+                self.scene.items()[-1].widget().firstHBorder = layer['firstHBorder']
+                self.scene.items()[-1].widget().secondVBorder = layer['secondVBorder']
+                self.scene.items()[-1].widget().secondHBorder = layer['secondHBorder']
+                # self.layers.newShapeLayer()
+                listWidgetQueue.append((layer['z'], layer['index'], layer['type'], layer['name']))
+            elif layer['type'] == 'txt':
+                self.scene.addWidget(TextLayer(*self.resolution, self))
+                self.scene.items()[-1].setZValue(layer['z'])
+                self.scene.items()[-1].widget().textEdit.setHtml(layer['text'])
+                self.scene.items()[-1].widget().leftBorder = tuple(layer['leftBorder'])
+                self.scene.items()[-1].widget().rightBorder = tuple(layer['rightBorder'])
+                self.scene.items()[-1].widget().topBorder = tuple(layer['topBorder'])
+                self.scene.items()[-1].widget().bottomBorder = tuple(layer['bottomBorder'])
+                self.scene.items()[-1].widget().updateTextEdit()
+                # self.layers.newTextLayer()
+                listWidgetQueue.append((layer['z'], layer['index'], layer['type'], layer['name']))
+
+        listWidgetQueue.sort()
+        for (z, index, layerType, name) in listWidgetQueue:
+            if layerType == 'bmp':
+                self.layers.newBitmapLayer(z, index, name)
+            elif layerType == 'img':
+                self.layers.newImageLayer(z, index, name)
+            elif layerType == 'shp':
+                self.layers.newShapeLayer(z, index, name)
+            elif layerType == 'txt':
+                self.layers.newTextLayer(z, index, name)
+
+    @pyqtSlot()
+    def resizeFile(self):
+        width = QInputDialog.getInt(self, 'Ширина изображения', 'Укажите желаемую ширину изображения.', 1280, min=1)
+        if width[1] is False:
+            return
+        height = QInputDialog.getInt(self, 'Высота изображения', 'Укажите желаемую высоту изображения.', 720, min=1)
+        if height[1] is False:
+            return
+        stretch = True if \
+            QMessageBox.question(self, 'Масштабирование холстов',
+                                 'Желаете ли вы, чтобы холсты растянулись/сжались после изменения размера?') == \
+            QMessageBox.Yes else False
+        width, height = width[0], height[0]
+        print(width, height, stretch)
+        for item in self.scene.items():
+            item.widget().setResolution(width, height, stretch)
+
+    @pyqtSlot()
+    def newFile(self):
+        width = QInputDialog.getInt(self, 'Ширина изображения', 'Укажите желаемую ширину изображения.', 1280, min=1)
+        if width[1] is False:
+            return
+        height = QInputDialog.getInt(self, 'Высота изображения', 'Укажите желаемую высоту изображения.', 720, min=1)
+        if height[1] is False:
+            return
+        width, height = width[0], height[0]
+        self.clearFile(width=width, height=height)
+
+    @pyqtSlot()
+    def exportFile(self):
+        filePath = QFileDialog.getSaveFileName(self, 'Экспорт проекта в изображение',
+                                               filter='''Portable Network Graphics (*.png);;
+                                                      Bitmap Picture (*.bmp);;Graphics Interchange Format (*.gif)''')[0]
+        if filePath == '':
+            return
+
+        print(self.size())
+        finalImage = QImage(QSize(*self.resolution), QImage.Format_ARGB32_Premultiplied)
+        finalImage.fill(QColor(0, 0, 0, alpha=0))
+        qp = QPainter(finalImage)
+        for item in sorted(self.scene.items()[2:], key=lambda x: x.zValue()):
+            item.widget().render(qp)
+            print(item.widget())
+        finalImage.save(filePath)
+
+def excepthook(exc_type, exc_value, exc_tb):
+    tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    print("error catched!:")
+    print("error message:\n", tb)
+    QApplication.quit()
+    # or QtWidgets.QApplication.exit(0)
 
 if __name__ == "__main__":
+    sys.excepthook = excepthook
     app = QApplication(sys.argv)
     window = Window()
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())

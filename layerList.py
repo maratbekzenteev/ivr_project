@@ -68,30 +68,46 @@ class LayerList(QWidget):
 
     # Функция добавления нового растрового слоя. Добавляет слой выше остальных (на передний план),
     # обновляет переменные состояния, подключает сигналы к слотам
-    def newBitmapLayer(self):
-        self.layout.addWidget(LayerListItem(
-            f'Холст ' + str(self.highestZ - 1), 'bmp', self.highestZ, self.layerCount))
+    def newBitmapLayer(self, z=-1, index=-1, name=''):
+        if index == -1:
+            self.layout.addWidget(LayerListItem(
+                f'Холст ' + str(self.highestZ - 1), 'bmp', self.highestZ, self.layerCount))
+        else:
+            self.layout.addWidget(LayerListItem(name if name != '' else f'Холст ' + str(self.highestZ - 1),
+                                                'bmp', z, index))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
 
-    def newImageLayer(self):
-        self.layout.addWidget(LayerListItem(
-            f'Картинка ' + str(self.highestZ - 1), 'img', self.highestZ, self.layerCount))
+    def newImageLayer(self, z=-1, index=-1, name=''):
+        if index == -1:
+            self.layout.addWidget(LayerListItem(
+                f'Картинка ' + str(self.highestZ - 1), 'img', self.highestZ, self.layerCount))
+        else:
+            self.layout.addWidget(LayerListItem(name if name != '' else f'Картинка ' + str(self.highestZ - 1),
+                                                'img', z, index))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
 
-    def newShapeLayer(self):
-        self.layout.addWidget(LayerListItem(
-            f'Фигура ' + str(self.highestZ - 1), 'shp', self.highestZ, self.layerCount))
+    def newShapeLayer(self, z=-1, index=-1, name=''):
+        if index == -1:
+            self.layout.addWidget(LayerListItem(
+                f'Фигура ' + str(self.highestZ - 1), 'shp', self.highestZ, self.layerCount))
+        else:
+            self.layout.addWidget(LayerListItem(name if name != '' else f'Фигура ' + str(self.highestZ - 1),
+                                                'shp', z, index))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
 
-    def newTextLayer(self):
-        self.layout.addWidget(LayerListItem(
-            f'Надпись ' + str(self.highestZ - 1), 'txt', self.highestZ, self.layerCount))
+    def newTextLayer(self, z=-1, index=-1, name=''):
+        if index == -1:
+            self.layout.addWidget(LayerListItem(
+                f'Надпись ' + str(self.highestZ - 1), 'txt', self.highestZ, self.layerCount))
+        else:
+            self.layout.addWidget(LayerListItem(name if name != '' else f'Надпись ' + str(self.highestZ - 1),
+                                                'txt', z, index))
         self.layerCount += 1
         self.highestZ += 1
         self.connectNewItem()
@@ -273,3 +289,16 @@ class LayerList(QWidget):
         self.layout.removeWidget(deletedWidget)
 
         self.signals.deleted.emit(index)
+
+    def clear(self):
+        self.deactivateLayer(0)
+        for i in range(self.layerCount - 1, -1, -1):
+            self.deleteLayer(i)
+        self.highestZ = 0
+
+    def getName(self, index):
+        for i in range(self.layerCount):
+            if self.layout.itemAt(i).widget().index == index:
+                return self.layout.itemAt(i).widget().nameField.text()
+
+        return ''

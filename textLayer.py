@@ -147,13 +147,7 @@ class TextLayer(QWidget):
             self.topBorder = self.gridLines[0][topGridLine]
             self.bottomBorder = self.gridLines[0][bottomGridLine]
 
-            x1 = self.gridLineToOffset(1, *self.leftBorder)
-            x2 = self.gridLineToOffset(1, *self.rightBorder)
-            y1 = self.gridLineToOffset(0, *self.topBorder)
-            y2 = self.gridLineToOffset(0, *self.bottomBorder)
-            self.textEdit.setGeometry(x1, y1, x2 - x1, y2 - y1)
-            self.textEdit.show()
-            self.repaint()
+            self.updateTextEdit()
         elif not self.active and self.parent.currentLayer != -1:
             self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
 
@@ -186,3 +180,19 @@ class TextLayer(QWidget):
         self.alignment = self.textEdit.alignment()
 
         self.parent.updateTextToolbarState()
+
+    def updateTextEdit(self):
+        x1 = self.gridLineToOffset(1, *self.leftBorder)
+        x2 = self.gridLineToOffset(1, *self.rightBorder)
+        y1 = self.gridLineToOffset(0, *self.topBorder)
+        y2 = self.gridLineToOffset(0, *self.bottomBorder)
+        self.textEdit.setGeometry(x1, y1, x2 - x1, y2 - y1)
+        self.textEdit.show()
+        self.repaint()
+
+    def setResolution(self, width, height, stretch):
+        self.setMinimumSize(width, height)
+        self.setMaximumSize(width, height)
+        self.resolution = width, height
+        self.updateTextEdit()
+        self.repaint()

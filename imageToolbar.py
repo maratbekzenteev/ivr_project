@@ -59,5 +59,7 @@ class ImageToolbar(QWidget):
     def selectFile(self):
         self.filePath = QFileDialog.getOpenFileName(self, 'Выбрать картинку', '',
                                                     'Файл изображения (*.png *.jpeg *.jpg *.gif)')[0]
+        if self.filePath == '':
+            return
 
         self.signals.imageChanged.emit(self.filePath)

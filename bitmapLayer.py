@@ -201,3 +201,18 @@ class BitmapLayer(QWidget):
     def fastGetPixel(self, x: int, y: int) -> str:
         i = (x + (y * self.resolution[0])) * 4
         return self.fastBitmap[i:i + 4]
+
+    def setResolution(self, width, height, stretch):
+        self.setMinimumSize(width, height)
+        self.setMaximumSize(width, height)
+        self.resolution = width, height
+
+        if stretch:
+            self.bitmap = self.bitmap.scaled(width, height, aspectRatioMode=Qt.IgnoreAspectRatio)
+        else:
+            bitmap = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
+            qp = QPainter(bitmap)
+            qp.drawImage(0, 0, self.bitmap)
+            self.bitmap = bitmap
+
+        self.repaint()

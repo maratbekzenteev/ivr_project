@@ -46,10 +46,6 @@ class ImageLayer(QWidget):
         self.image = self.image.scaled(self.image.width() * self.size / 100, self.image.height() * self.size / 100,
                                        aspectRatioMode=Qt.IgnoreAspectRatio)
 
-    def setResolution(self, width, height):
-        self.resolution = width, height
-        self.repaint()
-
     def findBoundaryGridLines(self, x1, y1, x2, y2):
         leftGridLine = 0
         while leftGridLine < len(self.gridLines[1]) and \
@@ -203,3 +199,9 @@ class ImageLayer(QWidget):
                 self.repaint()
         elif not self.active and self.parent.currentLayer != -1:
             self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
+
+    def setResolution(self, width, height, stretch):
+        self.setMinimumSize(width, height)
+        self.setMaximumSize(width, height)
+        self.resolution = width, height
+        self.repaint()

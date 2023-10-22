@@ -38,10 +38,6 @@ class ShapeLayer(QWidget):
         palette.setBrush(QPalette.Window, QBrush(QColor(0, 0, 0, alpha=0), Qt.SolidPattern))
         self.setPalette(palette)
 
-    def setResolution(self, width, height):
-        self.resolution = width, height
-        self.repaint()
-
     def findNearestGridlines(self, point: QPoint) -> tuple[tuple, tuple]:
         x, y = point.x(), point.y()
         hLine = min(self.gridLines[0], key=lambda i: abs(y - self.gridLineToOffset(0, *i)))
@@ -65,11 +61,12 @@ class ShapeLayer(QWidget):
         if self.shape == 'none':
             return
         if self.shape == 'line':
-            qp.drawLine(QPoint(x1, y1), QPoint(x2, y2))
+            qp.drawLine(QPoint(x1, y1) + QPoint(self.xOffset, self.yOffset),
+                        QPoint(x2, y2) + QPoint(self.xOffset, self.yOffset))
         elif self.shape == 'rect':
-            qp.drawRect(min(x1, x2), min(y1, y2), abs(x1 - x2), abs(y1 - y2))
+            qp.drawRect(min(x1, x2) + self.xOffset, min(y1, y2) + self.yOffset, abs(x1 - x2), abs(y1 - y2))
         elif self.shape == 'oval':
-            qp.drawEllipse(min(x1, x2), min(y1, y2), abs(x1 - x2), abs(y1 - y2))
+            qp.drawEllipse(min(x1, x2) + self.xOffset, min(y1, y2) + self.yOffset, abs(x1 - x2), abs(y1 - y2))
 
         if self.drawing and self.shape != 'none' and self.tool == 'grid':
             qp = QPainter(self)
@@ -138,3 +135,9 @@ class ShapeLayer(QWidget):
             self.repaint()
         elif not self.active and self.parent.currentLayer != -1:
             self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
+
+    def setResolution(self, width, height, stretch):
+        self.setMinimumSize(width, height)
+        self.setMaximumSize(width, height)
+        self.resolution = width, height
+        self.repaint()
