@@ -3,7 +3,7 @@
 
 # Марат Бекзентеев
 
-### Группа: 10И2
+### Группа: 11И2
 ### Электронная почта: maratbekzenteev@yandex.ru
 ### VK: www.vk.com/id_bekzenteevmr
 
