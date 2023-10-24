@@ -113,6 +113,8 @@ class Window(QWidget):
         self.layers.newStaticLayer('Фон', 0)
         self.layers.newStaticLayer('Сетка', 1024)
 
+        self.finalImage = QImage(QSize(*self.resolution), QImage.Format_ARGB32_Premultiplied)
+
         self.show()
 
     # Слот для self.zoomInShortcut, увеличивает масштаб отображения в рабочей области в 5/4 раза
@@ -232,10 +234,6 @@ class Window(QWidget):
         self.scene.items()[index].widget().active = True
         self.currentLayer = index
 
-        for i in range(len(self.scene.items())):
-            self.scene.items()[i].widget().setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self.scene.items()[self.currentLayer].widget().setAttribute(Qt.WA_TransparentForMouseEvents, False)
-
         if isinstance(self.scene.items()[self.currentLayer].widget(), BitmapLayer):
             self.updateBitmapLayerState()
         elif isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
@@ -296,6 +294,15 @@ class Window(QWidget):
         filePath = QFileDialog.getSaveFileName(self, 'Сохранить проект', filter='Файл проекта GrImage (*.gri)')[0]
         if filePath == '':
             return
+
+        self.layers.deactivateAll()
+        if self.currentLayer != -1:
+            if isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
+                self.scene.items()[self.currentLayer].setZValue(self.scene.items()[self.currentLayer].widget()
+                                                                .previousZValue)
+
+            self.scene.items()[self.currentLayer].widget().active = False
+            self.currentLayer = -1
 
         output = {}
         output['name'] = '.'.join(filePath.split('/')[-1].split('.')[:-1])
@@ -368,9 +375,7 @@ class Window(QWidget):
 
             if not isinstance(curWidget, BackgroundLayer):
                 output['layers'][-1]['z'] = self.scene.items()[i].zValue()
-                print('bib')
                 output['layers'][-1]['name'] = self.layers.getName(i)
-                print('bib2')
                 output['layers'][-1]['index'] = i
 
         jsonObject = json.dumps(output, indent=4)
@@ -470,6 +475,13 @@ class Window(QWidget):
             elif layerType == 'txt':
                 self.layers.newTextLayer(z, index, name)
 
+        self.highestZ = max([i.zValue() for i in self.scene.items()[2:]] + [0])
+        self.layers.deactivateAll()
+
+        if self.currentLayer != -1:
+            self.scene.items()[self.currentLayer].widget().active = False
+        self.currentLayer = -1
+
     @pyqtSlot()
     def resizeFile(self):
         width = QInputDialog.getInt(self, 'Ширина изображения', 'Укажите желаемую ширину изображения.', 1280, min=1)
@@ -483,7 +495,6 @@ class Window(QWidget):
                                  'Желаете ли вы, чтобы холсты растянулись/сжались после изменения размера?') == \
             QMessageBox.Yes else False
         width, height = width[0], height[0]
-        print(width, height, stretch)
         for item in self.scene.items():
             item.widget().setResolution(width, height, stretch)
 
@@ -502,18 +513,22 @@ class Window(QWidget):
     def exportFile(self):
         filePath = QFileDialog.getSaveFileName(self, 'Экспорт проекта в изображение',
                                                filter='''Portable Network Graphics (*.png);;
-                                                      Bitmap Picture (*.bmp);;Graphics Interchange Format (*.gif)''')[0]
+                                                      Bitmap Picture (*.bmp);;
+                                                      Joint Photographic Experts Group (*.jpg)''')[0]
         if filePath == '':
             return
 
-        print(self.size())
-        finalImage = QImage(QSize(*self.resolution), QImage.Format_ARGB32_Premultiplied)
-        finalImage.fill(QColor(0, 0, 0, alpha=0))
-        qp = QPainter(finalImage)
+        self.layers.deactivateAll()
+        if self.currentLayer != -1:
+            self.scene.items()[self.currentLayer].widget().active = False
+        self.currentLayer = -1
+
+        self.finalImage = QImage(QSize(*self.resolution), QImage.Format_ARGB32_Premultiplied)
+        self.finalImage.fill(QColor(0, 0, 0, alpha=0))
+        qp = QPainter(self.finalImage)
         for item in sorted(self.scene.items()[2:], key=lambda x: x.zValue()):
             item.widget().render(qp)
-            print(item.widget())
-        finalImage.save(filePath)
+        self.finalImage.save(filePath)
 
 
 def excepthook(exc_type, exc_value, exc_tb):

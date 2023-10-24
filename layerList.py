@@ -156,6 +156,11 @@ class LayerList(QWidget):
 
         self.signals.deactivated.emit(index)
 
+    def deactivateAll(self):
+        for i in range(self.layerCount):
+            self.layout.itemAt(i).widget().active = False
+            self.layout.itemAt(i).widget().updatePalette()
+
     # Слот сигнала LayerListItem.shown. Сообщает сигнал shown, сам не делает ничего, так как внешний вид виджет
     # обновляет сам, а показ на сцене осуществляет класс Window
     @pyqtSlot(int)
