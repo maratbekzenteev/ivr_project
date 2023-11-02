@@ -1,24 +1,25 @@
 import sys
 import traceback
 import json
+import requests
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget,
                              QWidget, QGridLayout, QShortcut, QFileDialog, QInputDialog, QMessageBox)
-from PyQt5.QtGui import QPixmap, QFont, QKeySequence, QColor, QImage, QPainter
-from PyQt5.QtCore import Qt, QRect, pyqtSlot, QByteArray, QBuffer, QIODevice, QSize
+from PyQt5.QtGui import QFont, QKeySequence, QColor, QImage, QPainter
+from PyQt5.QtCore import Qt, pyqtSlot, QByteArray, QBuffer, QIODevice, QSize
 from bitmapLayer import BitmapLayer
 from gridLayer import GridLayer
 from imageLayer import ImageLayer
 from shapeLayer import ShapeLayer
 from textLayer import TextLayer
 from backgroundLayer import BackgroundLayer
-from bitmapToolbar import BitmapToolbar
-from imageToolbar import ImageToolbar
-from layerToolbar import LayerToolbar
-from gridToolbar import GridToolbar
-from shapeToolbar import ShapeToolbar
-from textToolbar import TextToolbar
-from fileToolbar import FileToolbar
-from layerList import LayerList
+from client.gui.bitmapToolbar import BitmapToolbar
+from client.gui.imageToolbar import ImageToolbar
+from client.gui.gridToolbar import GridToolbar
+from client.gui.shapeToolbar import ShapeToolbar
+from client.gui.textToolbar import TextToolbar
+from client.gui.fileToolbar import FileToolbar
+from client.gui.layerList import LayerList
+from client.src.forms import LoginForm, ChangePasswordForm, ProjectOpenForm
 
 
 # Договорённости по именованию переменных:
@@ -26,6 +27,9 @@ from layerList import LayerList
 # - Названия классов отображают, что это за класс (кнопка, превью, список, ...)
 # - Названия сигналов пишутся в форме Past Participle (clicked, shown, valueChanged, ...)
 # - Названия функций-слотов пишутся в форме инфинитива (addWidget, updateLayerState, swapLayers, ...)
+
+
+SERVER_ADDRESS = ''
 
 
 # Класс Window - класс главного окна программы.
@@ -40,6 +44,9 @@ from layerList import LayerList
 # - - один слой не выделен). Для перевода в индексацию self.scene прибавить 1
 # - self.highestZ - int, текущая "высота" самого высокого слоя. Поддерживается также в LayerList
 # - self.resolution - tuple(int, int), разрешение целевого изображения проекта
+# - self.username
+# - self.password
+# - self.fileDump
 class Window(QWidget):
     # Инициализация графических элементов, подключение сигналов к слотам
     def __init__(self):
@@ -53,6 +60,17 @@ class Window(QWidget):
         self.currentLayer = -1
         self.highestZ = 0
         self.resolution = 1280, 720
+        self.username = ''
+        self.password = ''
+        self.fileDump = dict()
+
+        self.loginForm = LoginForm(SERVER_ADDRESS)
+        self.loginForm.signals.requestAccepted.connect(self.login)
+        self.loginForm.signals.openForm.connect(self.openChangePasswordForm)
+        self.changePasswordForm = ChangePasswordForm(SERVER_ADDRESS)
+        self.changePasswordForm.signals.requestAccepted.connect(self.login)
+        self.projectOpenForm = ProjectOpenForm(SERVER_ADDRESS)
+        self.projectOpenForm.signals.requestAccepted.connect(self.openCloudFile)
 
         self.layers = LayerList(self)
         self.preview = QGraphicsView(self)
@@ -68,6 +86,8 @@ class Window(QWidget):
         self.tab.widget(1).resizeButton.clicked.connect(self.resizeFile)
         self.tab.widget(1).newButton.clicked.connect(self.newFile)
         self.tab.widget(1).exportButton.clicked.connect(self.exportFile)
+        self.tab.widget(1).cloudOpenButton.clicked.connect(self.openCloudForms)
+        self.tab.widget(1).cloudSaveButton.clicked.connect(self.saveCloudFile)
 
         self.tab.addTab(GridToolbar(self.resolution), "Сетка")
         self.tab.widget(2).signals.added.connect(self.addGridLine)
@@ -107,8 +127,6 @@ class Window(QWidget):
         self.scene.addWidget(GridLayer(*self.resolution))
         self.scene.items()[-1].setZValue(1024)
         self.preview.setScene(self.scene)
-
-        # self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution))
 
         self.layers.newStaticLayer('Фон', 0)
         self.layers.newStaticLayer('Сетка', 1024)
@@ -290,10 +308,12 @@ class Window(QWidget):
         self.scene.items()[1].widget().deleteLine(direction, indentType, indent)
 
     @pyqtSlot()
-    def saveFile(self):
-        filePath = QFileDialog.getSaveFileName(self, 'Сохранить проект', filter='Файл проекта GrImage (*.gri)')[0]
-        if filePath == '':
-            return
+    def saveFile(self, variableDump=False, projectName=''):
+        filePath = ''
+        if projectName == '':
+            filePath = QFileDialog.getSaveFileName(self, 'Сохранить проект', filter='Файл проекта GrImage (*.gri)')[0]
+            if filePath == '':
+                return
 
         self.layers.deactivateAll()
         if self.currentLayer != -1:
@@ -305,7 +325,7 @@ class Window(QWidget):
             self.currentLayer = -1
 
         output = {}
-        output['name'] = '.'.join(filePath.split('/')[-1].split('.')[:-1])
+        output['name'] = '.'.join(filePath.split('/')[-1].split('.')[:-1]) if projectName == '' else projectName
         output['width'], output['height'] = self.resolution
         output['highestZ'] = self.highestZ
         output['layers'] = []
@@ -378,9 +398,13 @@ class Window(QWidget):
                 output['layers'][-1]['name'] = self.layers.getName(i)
                 output['layers'][-1]['index'] = i
 
-        jsonObject = json.dumps(output, indent=4)
-        with open(filePath, 'w') as file:
-            file.write(jsonObject)
+        if not variableDump:
+            jsonObject = json.dumps(output, indent=4)
+            with open(filePath, 'w') as file:
+                file.write(jsonObject)
+            return
+
+        self.fileDump = output
 
     def clearFile(self, width=1280, height=720):
         self.layers.clear()
@@ -396,13 +420,16 @@ class Window(QWidget):
         self.layers.newStaticLayer('Сетка', 1024)
 
     @pyqtSlot()
-    def openFile(self):
-        filePath = QFileDialog.getOpenFileName(self, 'Открыть файл проекта', '', 'Файл проекта GrImage (*.gri)')[0]
-        if filePath == '':
-            return
+    def openFile(self, fileData=dict()):
+        if fileData == dict():
+            filePath = QFileDialog.getOpenFileName(self, 'Открыть файл проекта', '', 'Файл проекта GrImage (*.gri)')[0]
+            if filePath == '':
+                return
 
-        with open(filePath, 'r') as file:
-            jsonObject = json.load(file)
+            with open(filePath, 'r') as file:
+                jsonObject = json.load(file)
+        else:
+            jsonObject = fileData
 
         width, height = jsonObject['width'], jsonObject['height']
         self.clearFile(width=width, height=height)
@@ -497,6 +524,9 @@ class Window(QWidget):
         width, height = width[0], height[0]
         for item in self.scene.items():
             item.widget().setResolution(width, height, stretch)
+        self.tab.widget(2).resolution = width, height
+        self.tab.widget(2).sortV()
+        self.tab.widget(2).sortH()
 
     @pyqtSlot()
     def newFile(self):
@@ -530,6 +560,55 @@ class Window(QWidget):
             item.widget().render(qp)
         self.finalImage.save(filePath)
 
+    @pyqtSlot(str, str, dict)
+    def openCloudFile(self, username, password, projectData):
+        self.loginForm.hide()
+        self.changePasswordForm.hide()
+        self.projectOpenForm.hide()
+        self.login(username, password, dict())
+        self.openFile(projectData)
+
+    @pyqtSlot()
+    def openChangePasswordForm(self):
+        self.loginForm.hide()
+        self.changePasswordForm.show()
+
+    @pyqtSlot(str, str, dict)
+    def login(self, username, password, projectData):
+        self.username = username
+        self.password = password
+        self.loginForm.setLoginData(self.username, self.password)
+        self.projectOpenForm.setLoginData(self.username, self.password)
+        self.loginForm.hide()
+
+    @pyqtSlot()
+    def openCloudForms(self):
+        self.projectOpenForm.show()
+        self.loginForm.show()
+
+    @pyqtSlot()
+    def saveCloudFile(self):
+        if self.username == '':
+            self.loginForm.show()
+            return
+
+        projectName = QInputDialog.getText(self, 'Сохранение проекта в облаке', 'Укажите имя проекта')[0]
+        if projectName == '':
+            return
+        self.saveFile(variableDump=True, projectName=projectName)
+        self.fileDump['username'] = self.username
+        self.fileDump['password'] = self.password
+        response = requests.post(SERVER_ADDRESS + 'save_project', data=self.fileDump).json()
+        if response['status'] == 'ok':
+            QMessageBox(QMessageBox.Information, 'Сохранение проекта',
+                        'Проект успешно сохранен.', QMessageBox.Ok).exec()
+        elif response['status'] == 'incorrectUsername':
+            QMessageBox(QMessageBox.Information, 'Сохранение проекта',
+                        'Введено неверное имя пользователя.', QMessageBox.Ok).exec()
+        elif response['status'] == 'incorrectPassword':
+            QMessageBox(QMessageBox.Information, 'Сохранение проекта',
+                        'Введён неверный пароль.', QMessageBox.Ok).exec()
+
 
 def excepthook(exc_type, exc_value, exc_tb):
     tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
@@ -537,6 +616,7 @@ def excepthook(exc_type, exc_value, exc_tb):
     print("error message:\n", tb)
     QApplication.quit()
     # or QtWidgets.QApplication.exit(0)
+
 
 if __name__ == "__main__":
     sys.excepthook = excepthook

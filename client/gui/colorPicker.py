@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import pyqtSlot
-from signals import Signals
-from coloredButton import ColoredButton
+from client.src.signals import Signals
+from client.gui.coloredButton import ColoredButton
 
 
 # Виджет палитры (25 цветов в ширину, 5 цветов в высоту) для выбора цвета. Набор сигналов - Signals

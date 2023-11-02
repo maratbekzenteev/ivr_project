@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QPushButton, QGridLayout
 from PyQt5.QtGui import QPalette, QBrush, QColor
 from PyQt5.QtCore import Qt, pyqtSlot
-from signals import LayerSignals
-from layerListItem import LayerListItem
+from client.src.signals import LayerSignals
+from client.gui.layerListItem import LayerListItem
 
 
 # Виджет списка слоёв для удобной манипуляции (скрытия, перемещения по высоте, ...) пользователем.

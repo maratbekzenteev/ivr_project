@@ -1,10 +1,35 @@
 from PyQt5.QtWidgets import (QWidget, QGridLayout, QListWidget, QSpinBox, QRadioButton,
                              QPushButton, QButtonGroup, QLabel, QAbstractButton)
 from PyQt5.QtCore import Qt, pyqtSlot
-from signals import GridSignals
+from client.src.signals import GridSignals
 
 
+# Виджет панели инструментов для манипуляции с сеткой. Набор сигналов - GridSignals.
+# Графические элементы:
+# - self.layout - QGridLayout, сетка выравнивания элементов панели
+# - self.vList - QListWidget, список вертикальных линий сетки
+# - self.vSpinBox - QSpinBox, поле выбора отступа добавляемой вертикальной линии от левого края в процентах/пикселях
+# - self.vPercentButton - QRadioButton, кнопка выбора процентов для задания отступа добавляемой вертикальной линии
+# - self.vPixelButton - QRadioButton, кнопка выбора пикселей для задания отступа добавляемой вертикальной линии сетки
+# - self.vAddButton - QPushButton, кнопка добавления вертикальной линии сетки
+# - self.vDeleteButton - QPushButton, кнопка удаления выделенной в self.vList линии сетки
+# - self.vButtons - QButtonGroup, группа, объединяющая self.vPercentButton и vPixelButton
+# - self.hList - QListWidget, список горизонтальных линий сетки
+# - self.hSpinBox - QSpinBox, поле выбора отступа добавляемой горизонтальной линии от верхнего края в процентах/пикселях
+# - self.hPercentButton - QRadioButton, кнопка выбора процентов для задания отступа добавляемой горизонтальной линии
+# - self.hPixelButton - QRadioButton, кнопка выбора пикселей для задания отступа добавляемой горизонтальной линии сетки
+# - self.hAddButton - QPushButton, кнопка добавления горизонтальной линии сетки
+# - self.hDeleteButton - QPushButton, кнопка удаления выделенной в self.hList линии сетки
+# - self.hButtons - QButtonGroup, группа, объединяющая self.hPercentButton и hPixelButton
+# Аттрибуты:
+# - self.resolution - tuple(int, int), разрешение текущего проекта
+# - self.currentVIndentType - int, задает тип задания отступа добавляемой вертикальной линии сетки, принимает значения:
+# - - -1 - значение не выбрано пользователем
+# - - 0 - абсолютное задание (в пикселях)
+# - - 1 - относительное задание (в процентах)
+# - self.currentHIndentType - int, аналогичен предыдущему, но для горизонтальных линий сетки
 class GridToolbar(QWidget):
+    # Инициализация графических элементов и аттрибутов виджета
     def __init__(self, resolution):
         super().__init__()
 
@@ -73,6 +98,7 @@ class GridToolbar(QWidget):
         self.layout.addWidget(self.hAddButton, 4, 3)
         self.layout.addWidget(self.hDeleteButton, 5, 3)
 
+    # Обновление типа отступа добавляемой вертикальной линии сетки. Слот сигнала self.vButtons.buttonClicked
     @pyqtSlot(QAbstractButton)
     def updateVIndentType(self, button: QRadioButton):
         if button.text() == 'Процентов':
@@ -82,6 +108,7 @@ class GridToolbar(QWidget):
             self.vSpinBox.setMaximum(self.resolution[0])
             self.currentVIndentType = 0
 
+    # Обновление типа отступа добавляемой горизонтальной линии сетки. Слот сигнала self.hButtons.buttonClicked
     @pyqtSlot(QAbstractButton)
     def updateHIndentType(self, button: QRadioButton):
         if button.text() == 'Процентов':
@@ -91,6 +118,7 @@ class GridToolbar(QWidget):
             self.hSpinBox.setMaximum(self.resolution[0])
             self.currentHIndentType = 0
 
+    # Добавление вертикальной линии сетки. Слот сигнала self.vAddButton.clicked. Сообщает сигнал signals.added
     @pyqtSlot()
     def addVLine(self):
         if self.currentVIndentType == -1:
@@ -103,6 +131,7 @@ class GridToolbar(QWidget):
         self.sortV()
         self.signals.added.emit(1, self.currentVIndentType, self.vSpinBox.value())
 
+    # Добавление горизонтальной линии сетки. Слот сигнала self.hAddButton.clicked. Сообщает сигнал signals.added
     @pyqtSlot()
     def addHLine(self):
         if self.currentHIndentType == -1:
@@ -115,6 +144,7 @@ class GridToolbar(QWidget):
         self.sortH()
         self.signals.added.emit(0, self.currentHIndentType, self.hSpinBox.value())
 
+    # Сортировка списка вертикальных линий сетки. Вызывается после добавления новой линии и изменения разрешения
     def sortV(self):
         lines = [self.vList.item(i).text() for i in range(self.vList.count())]
         self.vList.clear()
@@ -123,6 +153,7 @@ class GridToolbar(QWidget):
         for i in lines:
             self.vList.addItem(i)
 
+    # Сортировка списка горизонтальных линий сетки. Вызывается после добавления новой линии и изменения разрешения
     def sortH(self):
         lines = [self.hList.item(i).text() for i in range(self.hList.count())]
         self.hList.clear()
@@ -131,6 +162,7 @@ class GridToolbar(QWidget):
         for i in lines:
             self.hList.addItem(i)
 
+    # Удаление вертикальной линии сетки. Слот сигнала self.vDeleteButton.clicked. Сообщает сигнал signals.deleted
     @pyqtSlot()
     def deleteVLine(self):
         if self.vList.currentRow() == -1:
@@ -140,6 +172,7 @@ class GridToolbar(QWidget):
         self.vList.takeItem(self.vList.currentRow())
         self.signals.deleted.emit(1, 0 if selectedItemText[-1] == 'x' else 1, int(selectedItemText.split()[0]))
 
+    # Удаление горизонтальной линии сетки. Слот сигнала self.hDeleteButton.clicked. Сообщает сигнал signals.deleted
     @pyqtSlot()
     def deleteHLine(self):
         if self.hList.currentRow() == -1:

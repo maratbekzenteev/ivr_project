@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QImage, QColor, QPainter, QPen, QPalette, QBrush
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QColor, QPainter, QPalette, QBrush
+from PyQt5.QtCore import Qt
 
 
 class GridLayer(QWidget):

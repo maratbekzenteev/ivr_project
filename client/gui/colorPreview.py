@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QWidget, QColorDialog, QPushButton, QGridLayout
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import pyqtSlot
-from signals import Signals
-from coloredButton import ColoredButton
+from client.src.signals import Signals
+from client.gui.coloredButton import ColoredButton
 
 
 # Виджет просмотра текущего цвета с функцией его изменения с помощью QColorDialog. Набор сигналов - Signals.

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLineEdit, QPushButton
 from PyQt5.QtGui import QPalette, QBrush, QColor
 from PyQt5.QtCore import Qt, pyqtSlot
-from signals import LayerSignals
+from client.src.signals import LayerSignals
 
 
 # Виджет отображения слоя в списке слоев. Помимо прочего позволяет сделать слой текущим (активировать),

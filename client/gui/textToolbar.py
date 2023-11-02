@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QSpinBox, QFontComboBox, QToolButton, QGridLayout
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtCore import pyqtSlot, Qt
-from colorPreview import ColorPreview
-from toolSelector import ToolSelector
-from signals import Signals
+from client.gui.colorPreview import ColorPreview
+from client.gui.toolSelector import ToolSelector
+from client.src.signals import Signals
 
 
 class TextToolbar(QWidget):

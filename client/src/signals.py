@@ -40,3 +40,9 @@ class ImageSignals(QObject):
     # size, alignment, tool
     stateChanged = pyqtSignal(int, str, str)
     imageChanged = pyqtSignal(str)
+
+
+class FormSignals(QObject):
+    # username, password, projectData
+    requestAccepted = pyqtSignal(str, str, dict)
+    openForm = pyqtSignal()

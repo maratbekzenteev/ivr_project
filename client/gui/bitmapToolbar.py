@@ -1,11 +1,11 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QSlider
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import pyqtSlot
-from signals import Signals
-from colorPicker import ColorPicker
-from colorPreview import ColorPreview
-from widthPictogram import WidthPictogram
-from toolSelector import ToolSelector
+from client.src.signals import Signals
+from client.gui.colorPicker import ColorPicker
+from client.gui.colorPreview import ColorPreview
+from client.gui.widthPictogram import WidthPictogram
+from client.gui.toolSelector import ToolSelector
 
 
 # Виджет панели инструментов для работы с растровыми слоями. Набор сигналов - Signals

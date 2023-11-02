@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QToolButton
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QSize, Qt, pyqtSlot
-from signals import Signals
+from client.src.signals import Signals
 
 
 # Виджет выбора инструмента. Отличается от обычной таблицы с кнопками тем, что кнопка отпускается сама
@@ -49,7 +49,7 @@ class ToolSelector(QWidget):
     # Присвоение кнопкам иконок, названия которых перечислены в аргументах в порядке следованя кнопок слева направо
     def setIcons(self, *icons):
         for i in range(len(icons)):
-            self.layout.itemAtPosition(0, i).widget().setIcon(QIcon('tmp_icon.png'))
+            self.layout.itemAtPosition(0, i).widget().setIcon(QIcon('../static/tmp_icon.png'))
 
     # Обновление состояния при нажатии одной из кнопок. Слот сигнала self.layout.itemAtPosition(0, i).widget().clicked
     # Сообщает сигнал valueChanged
