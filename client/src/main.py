@@ -610,16 +610,7 @@ class Window(QWidget):
                         'Введён неверный пароль.', QMessageBox.Ok).exec()
 
 
-def excepthook(exc_type, exc_value, exc_tb):
-    tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
-    print("error catched!:")
-    print("error message:\n", tb)
-    QApplication.quit()
-    # or QtWidgets.QApplication.exit(0)
-
-
 if __name__ == "__main__":
-    sys.excepthook = excepthook
     app = QApplication(sys.argv)
     window = Window()
     window.show()
