@@ -21,7 +21,7 @@ from client.src.signals import GridSignals
 # - self.hAddButton - QPushButton, кнопка добавления горизонтальной линии сетки
 # - self.hDeleteButton - QPushButton, кнопка удаления выделенной в self.hList линии сетки
 # - self.hButtons - QButtonGroup, группа, объединяющая self.hPercentButton и hPixelButton
-# Аттрибуты:
+# Атрибуты:
 # - self.resolution - tuple(int, int), разрешение текущего проекта
 # - self.currentVIndentType - int, задает тип задания отступа добавляемой вертикальной линии сетки, принимает значения:
 # - - -1 - значение не выбрано пользователем
@@ -29,8 +29,8 @@ from client.src.signals import GridSignals
 # - - 1 - относительное задание (в процентах)
 # - self.currentHIndentType - int, аналогичен предыдущему, но для горизонтальных линий сетки
 class GridToolbar(QWidget):
-    # Инициализация графических элементов и аттрибутов виджета
-    def __init__(self, resolution):
+    # Инициализация графических элементов и атрибутов виджета
+    def __init__(self, resolution: tuple):
         super().__init__()
 
         self.layout = QGridLayout(self)
@@ -100,7 +100,7 @@ class GridToolbar(QWidget):
 
     # Обновление типа отступа добавляемой вертикальной линии сетки. Слот сигнала self.vButtons.buttonClicked
     @pyqtSlot(QAbstractButton)
-    def updateVIndentType(self, button: QRadioButton):
+    def updateVIndentType(self, button: QRadioButton) -> None:
         if button.text() == 'Процентов':
             self.vSpinBox.setMaximum(100)
             self.currentVIndentType = 1
@@ -110,7 +110,7 @@ class GridToolbar(QWidget):
 
     # Обновление типа отступа добавляемой горизонтальной линии сетки. Слот сигнала self.hButtons.buttonClicked
     @pyqtSlot(QAbstractButton)
-    def updateHIndentType(self, button: QRadioButton):
+    def updateHIndentType(self, button: QRadioButton) -> None:
         if button.text() == 'Процентов':
             self.hSpinBox.setMaximum(100)
             self.currentHIndentType = 1
@@ -120,7 +120,7 @@ class GridToolbar(QWidget):
 
     # Добавление вертикальной линии сетки. Слот сигнала self.vAddButton.clicked. Сообщает сигнал signals.added
     @pyqtSlot()
-    def addVLine(self):
+    def addVLine(self) -> None:
         if self.currentVIndentType == -1:
             return
         elif self.currentVIndentType == 1:
@@ -133,7 +133,7 @@ class GridToolbar(QWidget):
 
     # Добавление горизонтальной линии сетки. Слот сигнала self.hAddButton.clicked. Сообщает сигнал signals.added
     @pyqtSlot()
-    def addHLine(self):
+    def addHLine(self) -> None:
         if self.currentHIndentType == -1:
             return
         elif self.currentHIndentType == 1:
@@ -145,7 +145,7 @@ class GridToolbar(QWidget):
         self.signals.added.emit(0, self.currentHIndentType, self.hSpinBox.value())
 
     # Сортировка списка вертикальных линий сетки. Вызывается после добавления новой линии и изменения разрешения
-    def sortV(self):
+    def sortV(self) -> None:
         lines = [self.vList.item(i).text() for i in range(self.vList.count())]
         self.vList.clear()
         lines.sort(key=lambda string:
@@ -154,7 +154,7 @@ class GridToolbar(QWidget):
             self.vList.addItem(i)
 
     # Сортировка списка горизонтальных линий сетки. Вызывается после добавления новой линии и изменения разрешения
-    def sortH(self):
+    def sortH(self) -> None:
         lines = [self.hList.item(i).text() for i in range(self.hList.count())]
         self.hList.clear()
         lines.sort(key=lambda string:
@@ -164,7 +164,7 @@ class GridToolbar(QWidget):
 
     # Удаление вертикальной линии сетки. Слот сигнала self.vDeleteButton.clicked. Сообщает сигнал signals.deleted
     @pyqtSlot()
-    def deleteVLine(self):
+    def deleteVLine(self) -> None:
         if self.vList.currentRow() == -1:
             return
 
@@ -174,7 +174,7 @@ class GridToolbar(QWidget):
 
     # Удаление горизонтальной линии сетки. Слот сигнала self.hDeleteButton.clicked. Сообщает сигнал signals.deleted
     @pyqtSlot()
-    def deleteHLine(self):
+    def deleteHLine(self) -> None:
         if self.hList.currentRow() == -1:
             return
 

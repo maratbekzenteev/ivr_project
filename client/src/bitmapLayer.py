@@ -1,13 +1,11 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QImage, QColor, QPainter, QPen, QPalette, QBrush
+from PyQt5.QtGui import QImage, QColor, QPainter, QPen, QPalette, QBrush, QPaintEvent, QMouseEvent
 from PyQt5.QtCore import Qt, QPoint
 from collections import deque
 
 
-# В этом файле описан класс растрового слоя, помещаемый на сцену Window.scene при помощи QProxyWidget
-
 # Класс растрового слоя. Сигналов не сообщает.
-# Аттрибуты:
+# Атрибуты:
 # - self.parent - QWidget, ссылка на родительский виджет (Window).
 # - - Используется для передачи нажатий на активный слой, т.к. напрямую это делать затратно
 # - self.resolution - (int, int), разрешение слоя, а равно и всего проекта
@@ -35,8 +33,8 @@ from collections import deque
 # - - рисуется фигура
 # - self.pen - QPen, задает стиль рисования ("начертание пера"), цвет и толщину
 class BitmapLayer(QWidget):
-    # Инициализация аттрибутов, изменение фона на прозрачный
-    def __init__(self, width: int, height: int, parent: QWidget):
+    # Инициализация атрибутов, задание разрешения, изменение фона на прозрачный
+    def __init__(self, width: int, height: int, parent: QWidget) -> None:
         super().__init__()
 
         self.parent = parent
@@ -64,7 +62,7 @@ class BitmapLayer(QWidget):
 
     # Отрисовка виджета слоя. Помимо самого содержимого слоя, если пользователь не закончил рисовать
     # отрезок, прямоугольник или эллипс, поверх слоя тонкой линией также будет отрисована рисуемая фигура
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         qp = QPainter(self)
         qp.drawImage(0, 0, self.bitmap)
 
@@ -89,7 +87,7 @@ class BitmapLayer(QWidget):
     # Обработчик нажатия мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
     # то event будет приходить ему. В таком случае слой через self.parent передает нажатие на нужный слой.
     # В противном случае включается self.drawing и обновляется self.lastMousePos
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         if not self.active:
             if self.parent.currentLayer != -1:
                 self.parent.scene.items()[self.parent.currentLayer].widget().mousePressEvent(event)
@@ -104,7 +102,7 @@ class BitmapLayer(QWidget):
     # Если инструмент - кисть, ручка или карандаш, то результат рисования наносится на self.bitmap сразу.
     # Если это отрезок, прямоугольник или эллипс, то обновляется только self.curMousePos для корректной отрисовки
     # предпросмотра рисуемой фигуры
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if not self.active:
             if self.parent.currentLayer != -1:
                 self.parent.scene.items()[self.parent.currentLayer].widget().mouseMoveEvent(event)
@@ -122,13 +120,14 @@ class BitmapLayer(QWidget):
 
             self.update()
 
-    # Обработчик отпускания кнопок мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
+    # Обработчик отпускания кнопки мыши. Если слой неактивен, но находится поверх остальных (имеет наибольший z),
     # то event будет приходить ему. В таком случае слой через self.parent передает нажатие на нужный слой.
     # В противном случае проверяется, идет ли сейчас рисование. Если да, то оно заканчивается, => надо нарисовать
     # отрезок, прямоугольник или эллипс. Если инструмент - заливка, то обходом в ширину закрашиваются точки того же
     # цвета, что и точка заливки, находящиеся в одной области с ней. Для ускорения процесса используется быстрый доступ
-    # к точкам слоя при помощи предварительно обновленного self.fastBitmap. Заливка работает медленно
-    def mouseReleaseEvent(self, event):
+    # к точкам слоя при помощи предварительно обновленного self.fastBitmap. Заливка работает за O(W*H),
+    # где (W,H) - разрешение
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self.active:
             if self.drawing:
                 self.drawing = False
@@ -194,7 +193,7 @@ class BitmapLayer(QWidget):
             self.pen.setCapStyle(Qt.RoundCap)
 
     # Обновление self.fastBitmap
-    def updateFastBitmap(self):
+    def updateFastBitmap(self) -> None:
         self.fastBitmap = self.bitmap.bits().asstring(self.resolution[0] * self.resolution[1] * 4)
 
     # Быстрый доступ к пикселю при помощи self.fastBitmap
@@ -202,7 +201,9 @@ class BitmapLayer(QWidget):
         i = (x + (y * self.resolution[0])) * 4
         return self.fastBitmap[i:i + 4]
 
-    def setResolution(self, width, height, stretch):
+    # Задание нового разрешения. Вызывается родительским классом Window при изменении разрешения проектаю
+    # Аргумент stretch определяет, растягивается ли уже имеющееся содержимое виджета (True) или кадрируется (False)
+    def setResolution(self, width: int, height: int, stretch: bool) -> None:
         self.setMinimumSize(width, height)
         self.setMaximumSize(width, height)
         self.resolution = width, height

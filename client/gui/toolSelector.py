@@ -10,7 +10,7 @@ from client.src.signals import Signals
 # Графические элементы:
 # - self.layout - QGridLayout, сетка для выравнивания QToolButton
 # - QToolButton, размещенные в сетке
-# Аттрибуты:
+# Атрибуты:
 # - self.buttonToState - dict(str, str), ключи - тексты на кнопках, значения - соответствующие им значения self.state
 # - self.state - str, текущее состояние, соответствующее выбранному инструменту ('none', если инструмент не выбран)
 class ToolSelector(QWidget):
@@ -47,14 +47,14 @@ class ToolSelector(QWidget):
             self.indexToState.append(states[i])
 
     # Присвоение кнопкам иконок, названия которых перечислены в аргументах в порядке следованя кнопок слева направо
-    def setIcons(self, *icons):
+    def setIcons(self, *icons) -> None:
         for i in range(len(icons)):
             self.layout.itemAtPosition(0, i).widget().setIcon(QIcon('../static/tmp_icon.png'))
 
     # Обновление состояния при нажатии одной из кнопок. Слот сигнала self.layout.itemAtPosition(0, i).widget().clicked
     # Сообщает сигнал valueChanged
     @pyqtSlot()
-    def updateState(self):
+    def updateState(self) -> None:
         if self.sender().isChecked():
             self.state = self.buttonToState[self.sender().text()]
 
@@ -67,7 +67,9 @@ class ToolSelector(QWidget):
 
         self.signals.valueChanged.emit()
 
-    def setState(self, state):
+    # Обновление состояния виджета извне (обычно при выделении другого слоя, когда требуется подогнать состояние
+    # панели инструментов в соответствие с состоянием слоя). Для активной кнопки ставится checked = True, иначе - False
+    def setState(self, state: str) -> None:
         for i in range(len(self.indexToState)):
             self.layout.itemAtPosition(0, i).widget().setChecked(False)
         if state != 'none':

@@ -9,16 +9,32 @@ from client.gui.layerListItem import LayerListItem
 # Набор сигналов - LayerSignals. Поддерживает те же переменные для контроля к-ва и положения слоёв,
 # что и Window, для удобства обращения к ним.
 # Графические элементы:
-# - self.layout - QVBoxLayout, выравнивает объекты LayerListItem по сетке, причем в порядке снизу вверх.
-# - - Это сделано, чтобы новые слои добавлялись сверху, а не снизу: так пользователю легче понять, что слой выше всех
+# - self.outerLayout - QGridLayout, выравнивает объекты LayerListItem по сетке. В него входят:
+# - - self.newBitmapButton
+# - - self.newImageButton
+# - - self.newShapeButton
+# - - self.newTextButton
+# - - self.scrollArea
+# - self.scrollArea - QScrollArea, прокручиваемая область, в которой отображаются все LayerListItem. Виджет,
+# - - отвечающий за содержимое области - self.itemContainer
+# - self.itemContainer - QWidget, отображается внутри self.scrollArea
+# - self.layout - QVBoxLayout, сетка, выравнивающая и упорядочивающая LayerListItem внутри self.itemContainer,
+# - - причем в порядке снизу вверх. Это сделано, чтобы новые слои добавлялись сверху, а не снизу:
+# - - так пользователю легче понять, что слой выше всех
 # - Объекты класса LayerListItem, в которых поддерживается вся необходимая информация о каждом слое в отдельности
-# Аттрибуты:
-# - self.highestZ - int, класс, поддерживающий самое высокое значение self.z у любого из слоёв за все время
+# - self.newBitmapButton - QPushButton, кнопка добавления холста. Вызывает слот parent.addBitmapLayer
+# - self.newImageButton - QPushButton, кнопка добавления слоя-картинки. Вызывает слот parent.addImageLayer
+# - self.newShapeButton - QPushButton, кнопка добавления фигурного слоя. Вызывает слот parent.addShapeLayer
+# - self.newTextButton - QPushButton, кнопка добавления текстового слоя. Вызывает слот addTextLayer,
+# где parent - слой родительского виджета класса Window (см. main.py), в котором находится список слоёв
+# Атрибуты:
+# - self.highestZ - int (после загрузки из файла - целочисленный float),
+# - - класс, поддерживающий самое высокое значение self.z у любого из слоёв за все время
 # - - (т.е. удаленные слои тоже считаются). Это нужно для нахождения "безопасного" значения self.z для нового слоя
 # - self.layerCount - int, текущее к-во слоев
 class LayerList(QWidget):
-    # Инициализация графических элементов и аттрибутов
-    def __init__(self, parent: QWidget):
+    # Инициализация графических элементов и атрибутов
+    def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
 
         self.parent = parent
@@ -66,9 +82,10 @@ class LayerList(QWidget):
         palette.setBrush(QPalette.Window, QBrush(QColor(255, 255, 255), Qt.SolidPattern))
         self.setPalette(palette)
 
-    # Функция добавления нового растрового слоя. Добавляет слой выше остальных (на передний план),
-    # обновляет переменные состояния, подключает сигналы к слотам
-    def newBitmapLayer(self, z=-1, index=-1, name=''):
+    # Функция добавления нового растрового слоя ("холста"). При загрузке из файла (заполнены опциональные параметры)
+    # восстанавливает все атрибуты из него, иначе добавляет слой выше остальных (на передний план).
+    # Обновляет переменные состояния, подключает сигналы к слотам. Вызывается родительским классом
+    def newBitmapLayer(self, z=-1, index=-1, name='') -> None:
         if index == -1:
             self.layout.addWidget(LayerListItem(
                 f'Холст ' + str(self.highestZ - 1), 'bmp', self.highestZ, self.layerCount))
@@ -79,7 +96,10 @@ class LayerList(QWidget):
         self.highestZ += 1
         self.connectNewItem()
 
-    def newImageLayer(self, z=-1, index=-1, name=''):
+    # Функция добавления нового слоя-картинки. При загрузке из файла (заполнены опциональные параметры)
+    # восстанавливает все атрибуты из него, иначе добавляет слой выше остальных (на передний план).
+    # Обновляет переменные состояния, подключает сигналы к слотам. Вызывается родительским классом
+    def newImageLayer(self, z=-1, index=-1, name='') -> None:
         if index == -1:
             self.layout.addWidget(LayerListItem(
                 f'Картинка ' + str(self.highestZ - 1), 'img', self.highestZ, self.layerCount))
@@ -90,7 +110,10 @@ class LayerList(QWidget):
         self.highestZ += 1
         self.connectNewItem()
 
-    def newShapeLayer(self, z=-1, index=-1, name=''):
+    # Функция добавления нового фигурного слоя. При загрузке из файла (заполнены опциональные параметры)
+    # восстанавливает все атрибуты из него, иначе добавляет слой выше остальных (на передний план).
+    # Обновляет переменные состояния, подключает сигналы к слотам. Вызывается родительским классом
+    def newShapeLayer(self, z=-1, index=-1, name='') -> None:
         if index == -1:
             self.layout.addWidget(LayerListItem(
                 f'Фигура ' + str(self.highestZ - 1), 'shp', self.highestZ, self.layerCount))
@@ -101,7 +124,10 @@ class LayerList(QWidget):
         self.highestZ += 1
         self.connectNewItem()
 
-    def newTextLayer(self, z=-1, index=-1, name=''):
+    # Функция добавления нового текстового слоя. При загрузке из файла (заполнены опциональные параметры)
+    # восстанавливает все атрибуты из него, иначе добавляет слой выше остальных (на передний план).
+    # Обновляет переменные состояния, подключает сигналы к слотам. Вызывается родительским классом
+    def newTextLayer(self, z=-1, index=-1, name='') -> None:
         if index == -1:
             self.layout.addWidget(LayerListItem(
                 f'Надпись ' + str(self.highestZ - 1), 'txt', self.highestZ, self.layerCount))
@@ -112,7 +138,9 @@ class LayerList(QWidget):
         self.highestZ += 1
         self.connectNewItem()
 
-    def connectNewItem(self):
+    # Функция подключения графических элементов нового LayerListItem к соответствующим слотам. Вызывается при добавлении
+    # любого динамического слоя (холста, картинки, фигуры, текстового). Вызывается самим классом LayerList
+    def connectNewItem(self) -> None:
         self.layout.itemAt(self.layerCount - 1).widget().signals.activated.connect(self.activateLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.deactivated.connect(self.deactivateLayer)
         self.layout.itemAt(self.layerCount - 1).widget().signals.shown.connect(self.showLayer)
@@ -124,7 +152,10 @@ class LayerList(QWidget):
         self.layout.itemAt(self.layerCount - 1).widget().active = True
         self.layout.itemAt(self.layerCount - 1).widget().updatePalette()
 
-    def newStaticLayer(self, name, z):
+    # Функция создания и подключения нового статического слоя (фона, сетки). Таким слоям присвоены определенные
+    # параметры, неизменные на протяжении всей работы с файлом (у фона z=0, у сетки z=1024), они передаются в функцию
+    # создания как аргументы. Вызывается родительским классом
+    def newStaticLayer(self, name: str, z: int) -> None:
         self.layout.addWidget(LayerListItem(
             name, 'stl', z, self.layerCount, static=True))
         self.layerCount += 1
@@ -156,7 +187,10 @@ class LayerList(QWidget):
 
         self.signals.deactivated.emit(index)
 
-    def deactivateAll(self):
+    # Функция деактивации всех слоёв. Вызывается родительским классом(в частности говоря, при сохранении и экспорте
+    # проекта). Это нужно, чтобы все текстовые слои отображались на своём месте, а не поверх других (чтобы в файле
+    # сохранилось корректное их значение z), а также чтобы на слоях не рисовались вспомогательные элементы
+    def deactivateAll(self) -> None:
         for i in range(self.layerCount):
             self.layout.itemAt(i).widget().active = False
             self.layout.itemAt(i).widget().updatePalette()
@@ -209,11 +243,11 @@ class LayerList(QWidget):
         self.layout.itemAt(inListIndex).widget().type, self.layout.itemAt(inListIndex + 1).widget().type = \
             self.layout.itemAt(inListIndex + 1).widget().type, self.layout.itemAt(inListIndex).widget().type
 
-        # Распаковкой кортежа меняются местами аттрибуты видимости слоев
+        # Распаковкой кортежа меняются местами атрибуты видимости слоев
         self.layout.itemAt(inListIndex).widget().visible, self.layout.itemAt(inListIndex + 1).widget().visible = \
             self.layout.itemAt(inListIndex + 1).widget().visible, self.layout.itemAt(inListIndex).widget().visible
 
-        # Распаковкой кортежа меняются местами аттрибуты активности слоев
+        # Распаковкой кортежа меняются местами атрибуты активности слоев
         self.layout.itemAt(inListIndex).widget().active, self.layout.itemAt(inListIndex + 1).widget().active = \
             self.layout.itemAt(inListIndex + 1).widget().active, self.layout.itemAt(inListIndex).widget().active
 
@@ -260,11 +294,11 @@ class LayerList(QWidget):
         self.layout.itemAt(inListIndex).widget().type, self.layout.itemAt(inListIndex - 1).widget().type = \
             self.layout.itemAt(inListIndex - 1).widget().type, self.layout.itemAt(inListIndex).widget().type
 
-        # Распаковкой кортежа меняются местами аттрибуты видимости слоев
+        # Распаковкой кортежа меняются местами атрибуты видимости слоев
         self.layout.itemAt(inListIndex).widget().visible, self.layout.itemAt(inListIndex - 1).widget().visible = \
             self.layout.itemAt(inListIndex - 1).widget().visible, self.layout.itemAt(inListIndex).widget().visible
 
-        # Распаковкой кортежа меняются местами аттрибуты активности слоев
+        # Распаковкой кортежа меняются местами атрибуты активности слоев
         self.layout.itemAt(inListIndex).widget().active, self.layout.itemAt(inListIndex - 1).widget().active = \
             self.layout.itemAt(inListIndex - 1).widget().active, self.layout.itemAt(inListIndex).widget().active
 
@@ -275,8 +309,11 @@ class LayerList(QWidget):
         # Сигналом swappedLayers сообщается необходимость поменять 2 слоя местами на сцене
         self.signals.swappedLayers.emit(index, self.layout.itemAt(inListIndex).widget().index)
 
+    # Фунция удаления слоя. Обновляет номер текущего слоя, если удаляется он, ищет индекс в сетке, обновляет атрибуты
+    # класса. Слот сигнала LayerListItem.deleted, также вызывается для всех слоёв самим классом при работе self.clear.
+    # Сообщает сигнал self.deleted
     @pyqtSlot(int)
-    def deleteLayer(self, index):
+    def deleteLayer(self, index: int) -> None:
         if self.parent.currentLayer == index:
             self.parent.currentLayer = -1
         elif self.parent.currentLayer > index:
@@ -295,13 +332,15 @@ class LayerList(QWidget):
 
         self.signals.deleted.emit(index)
 
-    def clear(self):
+    # Фунция очистки (удаления всех слоёв). Вызывается родительским классом при открытии проекта или создании нового
+    def clear(self) -> None:
         self.deactivateLayer(0)
         for i in range(self.layerCount - 1, -1, -1):
             self.deleteLayer(i)
         self.highestZ = 0
 
-    def getName(self, index):
+    # Функция получения названия слоя. Вызывается родительским классом при сохранении проекта
+    def getName(self, index: int) -> str:
         for i in range(self.layerCount):
             if self.layout.itemAt(i).widget().index == index:
                 return self.layout.itemAt(i).widget().nameField.text()

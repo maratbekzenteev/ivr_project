@@ -11,11 +11,11 @@ from client.gui.coloredButton import ColoredButton
 # - self.colorButton - ColoredButton, кнопка, выступающая в роли индикатора текущего цвета
 # - self.colorDialog - QColorDialog, диалог выбора цвета (отдельное окно), которого нет в палитре
 # - self.chooseColorButton - QPushButton, кнопка для показа self.colorDialog
-# Аттрибуты:
-# - self.color - текущий цвет
+# Атрибуты:
+# - self.color - QColor, текущий цвет
 class ColorPreview(QWidget):
-    # Инициализация графических элементов, подключение сигналов к слотам, инициализация аттрибута
-    def __init__(self):
+    # Инициализация графических элементов, подключение сигналов к слотам, инициализация атрибута
+    def __init__(self) -> None:
         super().__init__()
 
         self.layout = QGridLayout(self)
@@ -40,7 +40,7 @@ class ColorPreview(QWidget):
 
     # Обработчик отображения диалога self.colorDialog, слот сигнала self.chooseColorButton.clicked
     @pyqtSlot()
-    def showDialog(self):
+    def showDialog(self) -> None:
         self.colorDialog.show()
         self.colorDialog.setCurrentColor(self.color)
 
@@ -48,7 +48,7 @@ class ColorPreview(QWidget):
     # Слот сигнала self.colorDialog.colorSelected. Обновляет цвет self.colorButton согласно новым данным,
     # сообщает сигнал valueChanged
     @pyqtSlot()
-    def chooseColor(self):
+    def chooseColor(self) -> None:
         self.color = self.colorDialog.selectedColor()
         self.colorButton.setColor(self.color)
 

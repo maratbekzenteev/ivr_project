@@ -15,7 +15,7 @@ from client.gui.toolSelector import ToolSelector
 # - self.colorPreview - ColorPreview, индикатор текущего выбранного цвета с кнопкой выбора другого цвета (не из палитры)
 # - self.widthSlider - QSlider - ползунок выбора толщины (ширины) кисти/карандаша/ручки, принимает значения от 1 до 32
 # - self.toolSelector - ToolSelector, выбор текущего инструмента для работы со слоем
-# Аттрибуты:
+# Атрибуты:
 # - self.color - QColor, цвет заливки, кисти, карандаша, ручки, прямоугольника, прямой, эллипса
 # - self.width - int, толщина кисти, карандаша, ручки, прямоугольника, эллипса, прямой
 # - self.tool - str (в будущем планируется заменить на Enum), текущий выбранный инструмент
@@ -32,8 +32,8 @@ from client.gui.toolSelector import ToolSelector
 # - - - 'fill' - заливка. Меняет цвет области точек цвета точки, в которой была нажата ЛКМ. Область ограничена
 # - - - - точками другого цвета
 class BitmapToolbar(QWidget):
-    # Инициализация интерфейса, подключение сигналов к слотам, объявление аттрибутов класса
-    def __init__(self):
+    # Инициализация интерфейса, подключение сигналов к слотам, объявление атрибутов класса
+    def __init__(self) -> None:
         super().__init__()
 
         self.layout = QGridLayout(self)
@@ -70,7 +70,7 @@ class BitmapToolbar(QWidget):
     # Цвет всех эл-ов меняется на самый новый, т.е. на тот, который имеет лишь 1 из 3 эл-ов.
     # Также обновляется толщина и инструмент. Сообщается сигнал valueChanged
     @pyqtSlot()
-    def updateValues(self):
+    def updateValues(self) -> None:
         if self.colorPreview.color != self.color:
             self.color = self.colorPreview.color
             self.colorPicker.setColor(self.color)

@@ -10,11 +10,11 @@ from client.gui.coloredButton import ColoredButton
 # Графические элементы:
 # - self.layout - QGridLayout, сетка выравнивания ColoredButton в палитре
 # - Объекты класса ColoredButton, на каждый по 1 цвету
-# Аттрибуты:
+# Атрибуты:
 # - self.color - QColor, текущий цвет
 class ColorPicker(QWidget):
-    # Инициализация аттрибутов, соединение сигналов со слотами, размещение ColoredButton в ячейки сетки
-    def __init__(self):
+    # Инициализация атрибутов, соединение сигналов со слотами, размещение ColoredButton в ячейки сетки
+    def __init__(self) -> None:
         super().__init__()
 
         self.signals = Signals()
@@ -42,6 +42,6 @@ class ColorPicker(QWidget):
     # Обновление цвета при нажатии ColoredButton, слот сигнала ColoredButton.clicked.
     # Сообщает сигнал self.signals.valueChanged
     @pyqtSlot()
-    def updateColor(self):
+    def updateColor(self) -> None:
         self.color = self.sender().color
         self.signals.valueChanged.emit()

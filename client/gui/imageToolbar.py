@@ -9,7 +9,7 @@ from client.gui.widthPictogram import WidthPictogram
 # Виджет панели инструментов для манипуляций со слоем-картинкой. Набор сигналов - ImageSignals.
 # Графические элементы:
 # - self.layout - QGridLayout, сетка выравнивания элементов панели
-# - self.alignmentSelector - ToolSelector, определяет выравниваение текущего слоя-картинки относительно сетки. Состояния
+# - self.alignmentSelector - ToolSelector, определяет выравниваение текущего слоя-картинки относительно сетки. Значения:
 # - - 'fill' - растягивается на весь прямоугольник из линий сетки, в котором лежит (далее - "прямоугольник")
 # - - 'lt' - лежит в левом верхнем углу прямоугольника
 # - - 'top' - лежит внутри прямоугольника посередине его верхней стороны
@@ -27,8 +27,13 @@ from client.gui.widthPictogram import WidthPictogram
 # - self.sizeSlider - QSlider, позволяет пользователю выбрать масштаб, в котором картинка отображается (в процентах
 # - от фактического размера)
 # - self.selectFileButton - QToolButton, позволяет пользователю выбрать картинку, которая будет отображатся на слое
+# Атрибуты:
+# - self.size - int, принимает целые значения из [0;200], определяет масштам, в котором картинка отображается в
+# - - изображении в проекте (в процентах от фактического разрешения)
+# - self.filePath - str, задаёт путь до картинки, которая отображается на слое (если файл проекта не создан с нуля,
+# - - а открыт из gri-файла, то данные о картинке будут загружены оттуда)
 class ImageToolbar(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.layout = QGridLayout()
@@ -70,14 +75,17 @@ class ImageToolbar(QWidget):
         self.layout.addWidget(WidthPictogram(), 0, 3)
         self.layout.addWidget(self.sizeSlider, 0, 4)
 
+    # Обновление атрибутов и вызов обновления слоя-изображения (через сигнал). Сообщает сигнал signals.stateChanged
     @pyqtSlot()
-    def updateValues(self):
+    def updateValues(self) -> None:
         self.size = self.sizeSlider.value()
 
         self.signals.stateChanged.emit(self.size, self.alignmentSelector.state, self.toolSelector.state)
 
+    # Вызов диалога выбора картинки с последующей ее сменой. Не делает ничего, если новая картинка не была выбрана.
+    # Сообщает сигнал signals.imageChanged
     @pyqtSlot()
-    def selectFile(self):
+    def selectFile(self) -> None:
         self.filePath = QFileDialog.getOpenFileName(self, 'Выбрать картинку', '',
                                                     'Файл изображения (*.png *.jpeg *.jpg *.gif)')[0]
         if self.filePath == '':

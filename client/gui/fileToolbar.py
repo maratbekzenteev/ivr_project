@@ -18,7 +18,7 @@ from PyQt5.QtCore import QSize, Qt
 # где parent - это виджет главного окна, а не буквально родитель этого виджета
 class FileToolbar(QWidget):
     # Инициализация графических элементов
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.layout = QGridLayout(self)

@@ -6,8 +6,41 @@ from client.gui.toolSelector import ToolSelector
 from client.src.signals import Signals
 
 
+# Виджет панели инструментов для манипуляций с текстовым слоем. Набор сигналов - Signals.
+# Графические элементы:
+# - self.layout - QGridLayout, сетка выравнивания всех графических элементов внутри виджета
+# - self.colorPreview - ColorPreview, отвечает за предпросмотр и изменение цвета выделенных и новых символов
+# - self.fontComboBox - QFontComboBox, отвечает за выбор шрифта выделенных и новых символов
+# - self.sizeSpinBox - QSpinBox, отвечает за размер шрифта выделенных и новых символов
+# - self.fontWeightButton - QToolButton, отвечает за жирность выделенных и новых символов
+# - self.italicButton - QToolButton, отвечает за курсивность выделенных и новых символов
+# - self.underlineButton - QToolButton, отвечает за подчёркнутось выделенных и новых символов
+# - alignmentSelector - ToolSelector, позволяет выбрать выравниваение всей плашки текста внутри прямоугольника сетки.
+# - - Каждое состояние соответствует определенному значению self.alignment:
+# - - - 'none' - Qt.AlignLeft
+# - - - 'left' - Qt.AlignLeft
+# - - - 'cntr' - Qt.AlignCenter
+# - - - 'rght- - Qt.AlignRight
+# - - - 'fill' - Qt.AlignJustify
+# Атрибуты:
+# - self.color - QColor, цвет выделенных и новых символов
+# - self.font - str, шрифт выделенных и новых символов
+# - self.size - int, размер шрифта выделенных и новых символов, принимает значения от 1 до 256
+# - self.fontWeight - QFont::Weight, задаёт жирность выделенных и новых символов,
+# - - принимает значения:
+# - - - QFont.Normal - нежирный
+# - - - QFont.DemiBold - полужирный
+# - self.italic - bool, задаёт курсивность выделенных и новых символов
+# - self.underline - bool, задаёт подчёркнутость выделенных и новых символов
+# - self.alignment - Qt::AlignmentFlag, задаёт выравнивание текста, принимает значения:
+# - - Qt.AlignLeft - выравнивание по левому краю
+# - - Qt.AlignCenter - выравнивание по ценрту
+# - - Qt.AlignRight - выравниваение по правому краю
+# - - Qt.AlignJustify - выравнивание по всей ширине
+# где "новые символы" - символы, ещё не добавленные, появляющиеся на текущей позиции курсора
 class TextToolbar(QWidget):
-    def __init__(self):
+    # Инициализация графических элементов, подключение сигналов к слотам, инициализация атрибутов
+    def __init__(self) -> None:
         super().__init__()
 
         self.layout = QGridLayout(self)
@@ -72,8 +105,11 @@ class TextToolbar(QWidget):
         self.layout.addWidget(self.colorPreview, 0, 5)
         self.layout.addWidget(self.alignmentSelector, 0, 6)
 
+    # Обновление атрибутов "изнутри". Слот сигналов self.colorPreview.signals.valueChanged,
+    # self.fontComboBox.currentFontChanged, self.sizeSpinBox.valueChanged, self.fontWeightButton.clicked,
+    # self.italicButton.clicked, self.underlineButton.clicked. Сообщает сигнал signals.valueChanged
     @pyqtSlot()
-    def updateValues(self):
+    def updateValues(self) -> None:
         self.color = self.colorPreview.color
         self.font = self.fontComboBox.currentFont()
         self.size = self.sizeSpinBox.value()
@@ -84,7 +120,10 @@ class TextToolbar(QWidget):
 
         self.signals.valueChanged.emit()
 
-    def setState(self, color, font, size, fontWeight, italic, underline, alignment):
+    # Обновление атрибутов (и графических элементов) "извне" (из родительского класса). Вызывается при смене позиции
+    # курсора и при смене выделенного текстового слоя
+    def setState(self, color: QColor, font: str, size: int, fontWeight: QFont.Weight, italic: bool, underline: bool,
+                 alignment: Qt.AlignmentFlag) -> None:
         self.color = color
         self.colorPreview.setColor(color)
         self.font = font

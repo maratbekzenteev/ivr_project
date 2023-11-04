@@ -1,5 +1,4 @@
 import sys
-import traceback
 import json
 import requests
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget,
@@ -22,36 +21,42 @@ from client.gui.layerList import LayerList
 from client.src.forms import LoginForm, ChangePasswordForm, ProjectOpenForm
 
 
-# Договорённости по именованию переменных:
+# Договорённости по именованию переменных и комментариям:
 # - Названия переменных пишутся в стиле camelCase, чтобы избежать смешения двух стилей (в PyQt всё пишется этим стилем)
 # - Названия классов отображают, что это за класс (кнопка, превью, список, ...)
 # - Названия сигналов пишутся в форме Past Participle (clicked, shown, valueChanged, ...)
 # - Названия функций-слотов пишутся в форме инфинитива (addWidget, updateLayerState, swapLayers, ...)
+# - Понятия "растровый слой" и "холст" используются взаимозаменяемо
 
 
+# Адрес сервера, к которому программа подключается для получения и сохранения проектов пользователя.
+# (!) Оканчивается на прямой слеш ('/')
 SERVER_ADDRESS = ''
 
 
 # Класс Window - класс главного окна программы.
-# Выровнен по QGridLayout, содержит в себе (вложенно) все виджеты программы.
-# Переменные:
-# - self.layout - QGridLayout, сетка выравнивания виджетов в окне.
-# - self.tab - QTabWidget, содержащий виджеты панелей инструментов со всем основным функционалом (см. gui_classes.py)
+# Выровнен по QGridLayout, содержит в себе (вложенно) все виджеты программы
+# Графические элементы:
+# - self.layout - QGridLayout, сетка выравнивания виджетов в окне
+# - self.tab - QTabWidget, содержащий виджеты панелей инструментов со всем основным функционалом (см. client.gui)
 # - self.preview - QGraphicsView, "рабочая область" окна. Отображает сцену self.scene
-# - self.layers - LayerList (см. gui_classes.py), меню управления слоями (скрытие, выделение, передний/задний план,...)
-# - self.scene - QGraphicsScene, сцена со всеми слоями, включая слой с задним фоном
+# - self.layers - LayerList (см. client.gui.layerList.py), меню управления слоями (скрытие, выделение, удаление, ...)
+# - self.scene - QGraphicsScene, сцена со всеми слоями
+# Атрибуты:
 # - self.currentLayer - int, индекс слоя, с которым пользователь может взаимодействовать. Нумеруются с нуля (-1 - ни
-# - - один слой не выделен). Для перевода в индексацию self.scene прибавить 1
+# - - один слой не выделен). Слои с индексами 0 и 1 - всегда фон и сетка соответственно
 # - self.highestZ - int, текущая "высота" самого высокого слоя. Поддерживается также в LayerList
 # - self.resolution - tuple(int, int), разрешение целевого изображения проекта
-# - self.username
-# - self.password
-# - self.fileDump
+# - self.username - str, имя пользователя на сервере. Задаётся через self.loginForm или self.changePasswordForm
+# - self.password - str, пароль пользователся на сервере. Задаётся через self.loginForm или self.changePasswordForm
+# - self.fileDump - dict, JSON-словарь, содержащий в себе всю информацию о проекте. Содержимое передаётся в запросе
+# - - серверу при сохранении туда проекта. Подробности о формате см. в self.saveFile
+# - self.finalImage - QImage, картинка, на которой отрисовывается содержимое всех слоёв, кроме фона и сетки, перед
+# - - сохранением непосредственно на компьютер
 class Window(QWidget):
-    # Инициализация графических элементов, подключение сигналов к слотам
-    def __init__(self):
+    # Инициализация графических элементов и атрибутов, подключение сигналов к слотам
+    def __init__(self) -> None:
         super().__init__()
-        # self.setFont(QFont("Segoe UI", 12))
         self.setFont(QFont("Verdana", 12))
 
         self.layout = QGridLayout()
@@ -63,6 +68,13 @@ class Window(QWidget):
         self.username = ''
         self.password = ''
         self.fileDump = dict()
+        self.finalImage = QImage(QSize(*self.resolution), QImage.Format_ARGB32_Premultiplied)
+
+        # Комбинации клавиш для быстрой работы в программе
+        self.zoomInShortcut = QShortcut(QKeySequence("Ctrl+="), self)
+        self.zoomInShortcut.activated.connect(self.zoomIn)
+        self.zoomOutShortcut = QShortcut(QKeySequence("Ctrl+-"), self)
+        self.zoomOutShortcut.activated.connect(self.zoomOut)
 
         self.loginForm = LoginForm(SERVER_ADDRESS)
         self.loginForm.signals.requestAccepted.connect(self.login)
@@ -75,7 +87,7 @@ class Window(QWidget):
         self.layers = LayerList(self)
         self.preview = QGraphicsView(self)
         self.tab = QTabWidget(self)
-        self.tab.setMaximumHeight(196)
+        self.tab.setMaximumHeight(240)
 
         self.tab.addTab(BitmapToolbar(), "Холст")
         self.tab.widget(0).signals.valueChanged.connect(self.updateBitmapLayerState)
@@ -115,12 +127,6 @@ class Window(QWidget):
         self.layout.addWidget(self.tab, 0, 0, 1, 2, Qt.AlignTop)
         self.layout.setColumnStretch(1, 1)
 
-        self.zoomInShortcut = QShortcut(QKeySequence("Ctrl+="), self)
-        self.zoomInShortcut.activated.connect(self.zoomIn)
-
-        self.zoomOutShortcut = QShortcut(QKeySequence("Ctrl+-"), self)
-        self.zoomOutShortcut.activated.connect(self.zoomOut)
-
         self.scene = QGraphicsScene(self)
         self.scene.setItemIndexMethod(-1)
         self.scene.addWidget(BackgroundLayer(*self.resolution))
@@ -131,76 +137,91 @@ class Window(QWidget):
         self.layers.newStaticLayer('Фон', 0)
         self.layers.newStaticLayer('Сетка', 1024)
 
-        self.finalImage = QImage(QSize(*self.resolution), QImage.Format_ARGB32_Premultiplied)
-
         self.show()
 
     # Слот для self.zoomInShortcut, увеличивает масштаб отображения в рабочей области в 5/4 раза
     @pyqtSlot()
-    def zoomIn(self):
+    def zoomIn(self) -> None:
         self.preview.scale(1.25, 1.25)
 
     # Слот для self.zoomOutShortcut, увеличивает масштаб отображения в рабочей области в 4/5 раза
     @pyqtSlot()
-    def zoomOut(self):
+    def zoomOut(self) -> None:
         self.preview.scale(0.8, 0.8)
 
     # Добавление нового растрового слоя.
-    # Слот для self.tab.widget(1).newBitmapLayerButton.clicked, увеличивает макс. высоту слоя,
+    # Слот сигнала self.layers.newBitmapButton.clicked, увеличивает макс. высоту слоя,
     # добавляет слой на сцену (как и любой слой, в виде QProxyWidget) и в список слоёв.
     @pyqtSlot()
-    def addBitmapLayer(self):
+    def addBitmapLayer(self) -> None:
         self.highestZ += 1
         self.scene.addWidget(BitmapLayer(*self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newBitmapLayer()
 
+    # Добавление нового слоя-картинки.
+    # Слот сигнала self.layers.newImageButton.clicked, увеличивает макс. высоту слоя,
+    # добавляет слой на сцену (как и любой слой, в виде QProxyWidget) и в список слоёв.
     @pyqtSlot()
-    def addImageLayer(self):
+    def addImageLayer(self) -> None:
         self.highestZ += 1
         self.scene.addWidget(ImageLayer('tmp_icon.png', *self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newImageLayer()
 
+    # Добавление нового фигурного слоя.
+    # Слот сигнала self.layers.newShapeButton.clicked, увеличивает макс. высоту слоя,
+    # добавляет слой на сцену (как и любой слой, в виде QProxyWidget) и в список слоёв.
     @pyqtSlot()
-    def addShapeLayer(self):
+    def addShapeLayer(self) -> None:
         self.highestZ += 1
         self.scene.addWidget(ShapeLayer(*self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newShapeLayer()
 
+    # Добавление нового текстового слоя.
+    # Слот сигнала self.layers.newTextButton.clicked, увеличивает макс. высоту слоя,
+    # добавляет слой на сцену (как и любой слой, в виде QProxyWidget) и в список слоёв.
     @pyqtSlot()
-    def addTextLayer(self):
+    def addTextLayer(self) -> None:
         self.highestZ += 1
         self.scene.addWidget(TextLayer(*self.resolution, self))
         self.scene.items()[-1].setZValue(self.highestZ)
         self.layers.newTextLayer()
 
-    # Обновление цвета, толщины и инструмента рисования на слое
-    # Вызывается как слот при изменении состояния панели BitmapToolbar (сигнал valueChanged)
+    # Обновление состояния выделенного растрового слоя при изменении состояния панели инструментов пользователем.
+    # Слот сигнала self.tab.widget(0).valueChanged
     @pyqtSlot()
-    def updateBitmapLayerState(self):
+    def updateBitmapLayerState(self) -> None:
         if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), BitmapLayer):
             self.scene.items()[self.currentLayer].widget().updateState(self.tab.widget(0).color,
                                                                            self.tab.widget(0).width,
                                                                            self.tab.widget(0).tool)
 
+    # Обновление состояния выделенного слоя-картинки при изменении состояния панели инструментов пользователем.
+    # Слот сигнала self.tab.widget(3).stateChanged
     @pyqtSlot(int, str, str)
-    def updateImageLayerState(self, size, alignment, tool):
+    def updateImageLayerState(self, size: int, alignment: str, tool: str) -> None:
         if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
             self.scene.items()[self.currentLayer].widget().updateState(size, alignment, tool)
 
+    # Обновление картинки выделенного слоя-картинки при выборе пользователем новой картинки при помощи панели
+    # инструментов. Слот сигнала self.tab.widget(3).imageChanged
     @pyqtSlot(str)
     def updateImageLayerImage(self, imagePath):
         if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
             self.scene.items()[self.currentLayer].widget().updateImage(imagePath)
 
+    # Обновление панели инструментов ImageToolbar до состояния текущего слоя-картинки. Вызывается при повторном
+    # выделении слоя-картинки, чтобы на панели инструментов отображались данные именно о нём
     def updateImageToolbarState(self):
         self.tab.widget(3).filePath = self.scene.items()[self.currentLayer].widget().imagePath
         self.tab.widget(3).size = self.scene.items()[self.currentLayer].widget().size
         self.tab.widget(3).alignmentSelector.setState(self.scene.items()[self.currentLayer].widget().alignment)
         self.tab.widget(3).toolSelector.setState(self.scene.items()[self.currentLayer].widget().tool)
 
+    # Обновление состояния выделенного фигурного слоя при изменении состояния панели инструментов пользователем.
+    # Слот сигнала self.tab.widget(4).valueChanged
     @pyqtSlot()
     def updateShapeLayerState(self):
         if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), ShapeLayer):
@@ -210,6 +231,8 @@ class Window(QWidget):
                                                                        self.tab.widget(4).tool,
                                                                        self.tab.widget(4).shape)
 
+    # Обновление панели инструментов ShapeToolbar до состояния текущего фигурного слоя. Вызывается при повторном
+    # выделении фигурного слоя, чтобы на панели инструментов отображались данные именно о нём
     def updateShapeToolbarState(self):
         self.tab.widget(4).setState(self.scene.items()[self.currentLayer].widget().lineColor,
                                     self.scene.items()[self.currentLayer].widget().fillColor,
@@ -217,6 +240,8 @@ class Window(QWidget):
                                     self.scene.items()[self.currentLayer].widget().tool,
                                     self.scene.items()[self.currentLayer].widget().shape)
 
+    # Обновление состояния выделенного текстового слоя при изменении состояния панели инструментов пользователем.
+    # Слот сигнала self.tab.widget(5).valueChanged
     @pyqtSlot()
     def updateTextLayerState(self):
         if self.currentLayer != -1 and isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
@@ -228,6 +253,8 @@ class Window(QWidget):
                                                                        self.tab.widget(5).underline,
                                                                        self.tab.widget(5).alignment)
 
+    # Обновление панели инструментов TextToolbar до состояния текущего текстового слоя. Вызывается при повторном
+    # выделении текстового слоя, чтобы на панели инструментов отображались данные именно о нём
     def updateTextToolbarState(self):
         self.tab.widget(5).setState(self.scene.items()[self.currentLayer].widget().color,
                                     self.scene.items()[self.currentLayer].widget().font,
@@ -237,7 +264,7 @@ class Window(QWidget):
                                     self.scene.items()[self.currentLayer].widget().underline,
                                     self.scene.items()[self.currentLayer].widget().alignment)
 
-    # Активация выделенного через меню слоя. Слот для self.layers.signals.activated.
+    # Активация слоя по индексу. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
     # передаёт состояние панели инструментов на случай, если её состояние поменяли, пока активным был другой слой,
     # обновляет переменную self.currentLayer
@@ -263,7 +290,7 @@ class Window(QWidget):
             self.scene.items()[self.currentLayer].setZValue(1023)
             self.updateTextToolbarState()
 
-    # Деактивация слоя. Слот для self.layers.signals.deactivated.
+    # Деактивация слоя по индексу. Слот для self.layers.signals.deactivated.
     # Снимает выделение с ранее выделенного слоя (который и послал сигнал),
     # сообщает в self.currentLayer, что никакой слой не выделен.
     @pyqtSlot(int)
@@ -275,16 +302,17 @@ class Window(QWidget):
         self.scene.items()[index].widget().active = False
         self.currentLayer = -1
 
-    # Показывает слой. Слот для self.layers.signals.shown
+    # Показывает слой по индексу. Слот для self.layers.signals.shown
     @pyqtSlot(int)
     def showLayer(self, index: int) -> None:
         self.scene.items()[index].widget().show()
 
-    # Скрывает слой. Слот для self.layers.signals.hidden
+    # Скрытие слоя по индексу. Слот для self.layers.signals.hidden
     @pyqtSlot(int)
     def hideLayer(self, index: int) -> None:
         self.scene.items()[index].widget().hide()
 
+    # Удаление слоя по индексу. Слот для self.layers.signals.deleted
     @pyqtSlot(int)
     def deleteLayer(self, index):
         deletedItem = self.scene.items()[index]
@@ -299,16 +327,84 @@ class Window(QWidget):
         self.scene.items()[indexA].setZValue(bValue)
         self.scene.items()[indexB].setZValue(aValue)
 
+    # Добавление линии сетки. Подробнее о формате direction, indentType, indent см. в client.gui.gridToolbar.py или
+    # client.src.gridLayer.py
     @pyqtSlot(int, int, int)
     def addGridLine(self, direction: int, indentType: int, indent: int) -> None:
         self.scene.items()[1].widget().addLine(direction, indentType, indent)
 
+    # Удаление линии сетки. Подробнее о формате direction, indentType, indent см. в client.gui.gridToolbar.py или
+    # client.src.gridLayer.py
     @pyqtSlot(int, int, int)
     def deleteGridLine(self, direction: int, indentType: int, indent: int) -> None:
         self.scene.items()[1].widget().deleteLine(direction, indentType, indent)
 
+    # Сохранение проекта. Содержимое проекта записывается в output (протокол см. ниже).
+    # Если variableDump верно, то содержимое output копируется в self.fileDump для последующей
+    # передачи на сервер в JSON части запроса для сохранения проекта на сервере, иначе записывается в файл на
+    # компьютере пользователя (путь и имя файла спрашиваются у пользователся через диалог).
+    # Слот сигнала FileToolbar.saveButton.clicked
+    # Протокол описания проекта (в нотации JSON):
+    # - name - str, имя проекта
+    # - width - int, ширина выходного изображения проекта
+    # - height - int, высота выходного изображения проекта
+    # - highestZ - int, см. self.highestZ
+    # - layers - list, в котором содержится разная информация о слое в зависимости от его типа:
+    # - - О BackgroundLayer информация не записывается
+    # - - О BitmapLayer:
+    # - - - type = 'bmp'
+    # - - - data - str, строковое utf-8 представление потока байтов, полученного из BitmapLayer.bitmap
+    # - - - z - целочисленный float, высота слоя
+    # - - - index - int, индекс в self.scene
+    # - - - name - str, название слоя, данное пользователем в списке слоёв
+    # - - Об ImageLayer:
+    # - - - type = 'img'
+    # - - - data - str, строковое utf-8 представление потока байтов, полученного из ImageLayer.image
+    # - - - xOffset - int, отступ по горизонтали в пикселях от точки, где картинка должна лежать идеально по сетке
+    # - - - yOffset - int, отступ по вертикали в пикселях от точки, где картинка должна лежать идеально по сетке
+    # - - - alignment - str, выравниваение текущего слоя-картинки по сетке. Подробнее см. в client.src.imageLayer.py
+    # - - - leftBorder - tuple(int, int), левая сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - rightBorder - tuple(int, int), правая сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - topBorder - tuple(int, int), верхняя сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - bottomBorder - tuple(int, int), нижняя сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - size - int, масштаб, в котором картинка отображается (в процентах от фактического размера)
+    # - - - z - целочисленный float, высота слоя
+    # - - - index - int, индекс в self.scene
+    # - - - name - str, название слоя, данное пользователем в списке слоёв
+    # - - О ShapeLayer:
+    # - - - type = 'shp'
+    # - - - shape - str, тип фигуры ('none', 'line', 'oval', 'rect')
+    # - - - xOffset - int, отступ по горизонтали в пикселях от точки, где фигура должна лежать идеально по сетке
+    # - - - yOffset - int, отступ по вертикали в пикселях от точки, где фигура должна лежать идеально по сетке
+    # - - - width - int, толщина обводки фигуры
+    # - - - lineColor - tuple(int, int, int, int), цвет обводки, задаётся в порядке red, green, blue, alpha
+    # - - - fillColor - tuple(int, int, int, int), цвет заливки, задаётся в порядке red, green, blue, alpha
+    # - - - firstVBorder - tuple(int, int), 1-я вертикальная ограничивающая линия, подробнее см. в imageLayer.py
+    # - - - firstHBorder - tuple(int, int), 1-я горизонтальная ограничивающая линия, подробнее см. в imageLayer.py
+    # - - - secondVBorder - tuple(int, int), 2-я вертикальная ограничивающая линия, подробнее см. в imageLayer.py
+    # - - - secondHBorder - tuple(int, int), 2-я горизонтальная ограничивающая линия, подробнее см. в imageLayer.py
+    # - - - z - целочисленный float, высота слоя
+    # - - - index - int, индекс в self.scene
+    # - - - name - str, название слоя, данное пользователем в списке слоёв
+    # - - О TextLayer:
+    # - - - type = 'txt'
+    # - - - text - str, текст надписи, представленный в формате HTML
+    # - - - leftBorder - tuple(int, int), левая сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - rightBorder - tuple(int, int), правая сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - topBorder - tuple(int, int), верхняя сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - bottomBorder - tuple(int, int), нижняя сторона прямоугольника, подробнее см. в imageLayer.py
+    # - - - z - целочисленный float, высота слоя
+    # - - - index - int, индекс в self.scene
+    # - - - name - str, название слоя, данное пользователем в списке слоёв
+    # - - О GridLayer:
+    # - - - type = 'grd'
+    # - - - h - list(tuple(int, int)), список горизонтальных линий сетки, о формате см. client.src.gridLayer.py
+    # - - - v - list(tuple(int, int)), список вертикальных линий сетки, о формате см. client.src.gridLayer.py
+    # - - - z=1024.0
+    # - - - index - int, индекс в self.scene
+    # - - - name - str, название слоя в списке слоёв
     @pyqtSlot()
-    def saveFile(self, variableDump=False, projectName=''):
+    def saveFile(self, variableDump=False, projectName='') -> None:
         filePath = ''
         if projectName == '':
             filePath = QFileDialog.getSaveFileName(self, 'Сохранить проект', filter='Файл проекта GrImage (*.gri)')[0]
@@ -398,6 +494,7 @@ class Window(QWidget):
                 output['layers'][-1]['name'] = self.layers.getName(i)
                 output['layers'][-1]['index'] = i
 
+        # Объект записывается в файл, если это требуется
         if not variableDump:
             jsonObject = json.dumps(output, indent=4)
             with open(filePath, 'w') as file:
@@ -406,7 +503,9 @@ class Window(QWidget):
 
         self.fileDump = output
 
-    def clearFile(self, width=1280, height=720):
+    # Очистка проекта с заданием нового разрешения. Очищается в т.ч. список слоёв и сцена.
+    # Вызывается при открытии проекта или создании нового
+    def clearFile(self, width=1280, height=720) -> None:
         self.layers.clear()
         self.resolution = width, height
         self.currentLayer = -1
@@ -419,8 +518,11 @@ class Window(QWidget):
         self.layers.newStaticLayer('Фон', 0)
         self.layers.newStaticLayer('Сетка', 1024)
 
+    # Открытие проекта. Если в fileData что-то передано (когда проект открывается с сервера),
+    # то открытие происходит оттуда, иначе пользователь выбирает файл на компьютере, который нужно открыть. Формат файла
+    # идентичен описанному в self.saveFile. Слот сигнала FileToolbar.openButton.clicked
     @pyqtSlot()
-    def openFile(self, fileData=dict()):
+    def openFile(self, fileData=dict()) -> None:
         if fileData == dict():
             filePath = QFileDialog.getOpenFileName(self, 'Открыть файл проекта', '', 'Файл проекта GrImage (*.gri)')[0]
             if filePath == '':
@@ -434,8 +536,10 @@ class Window(QWidget):
         width, height = jsonObject['width'], jsonObject['height']
         self.clearFile(width=width, height=height)
 
+        # Очередь, в которой слои будут добавлены в список слоёв
         listWidgetQueue = []
 
+        # Слои восстанавливаются на сцене в порядке индексов
         for layer in jsonObject['layers']:
             if layer['type'] == 'grd':
                 self.scene.items()[-1].widget().hLines = list(layer['h'])
@@ -491,6 +595,7 @@ class Window(QWidget):
                 # self.layers.newTextLayer()
                 listWidgetQueue.append((layer['z'], layer['index'], layer['type'], layer['name']))
 
+        # В список слоёв слои добавляются в порядке высот, а не индексов
         listWidgetQueue.sort()
         for (z, index, layerType, name) in listWidgetQueue:
             if layerType == 'bmp':
@@ -502,6 +607,7 @@ class Window(QWidget):
             elif layerType == 'txt':
                 self.layers.newTextLayer(z, index, name)
 
+        # Максимальная высота восстанавливается из файла
         self.highestZ = max([i.zValue() for i in self.scene.items()[2:]] + [0])
         self.layers.deactivateAll()
 
@@ -509,8 +615,10 @@ class Window(QWidget):
             self.scene.items()[self.currentLayer].widget().active = False
         self.currentLayer = -1
 
+    # Изменение разрешения проекта. Слот сигнала FileToolbar.resizeButton.clicked. Повторная сортировка нужна,
+    # чтобы правильно друг относительно друга располагались относительно и абсолютно заданные линии сетки
     @pyqtSlot()
-    def resizeFile(self):
+    def resizeFile(self) -> None:
         width = QInputDialog.getInt(self, 'Ширина изображения', 'Укажите желаемую ширину изображения.', 1280, min=1)
         if width[1] is False:
             return
@@ -522,12 +630,15 @@ class Window(QWidget):
                                  'Желаете ли вы, чтобы холсты растянулись/сжались после изменения размера?') == \
             QMessageBox.Yes else False
         width, height = width[0], height[0]
+        self.resolution = width, height
         for item in self.scene.items():
             item.widget().setResolution(width, height, stretch)
         self.tab.widget(2).resolution = width, height
         self.tab.widget(2).sortV()
         self.tab.widget(2).sortH()
 
+    # Создание нового проекта с разрешением, указанным пользователем в диалогах.
+    # Слот сигнала FileToolbar.newButton.clicked
     @pyqtSlot()
     def newFile(self):
         width = QInputDialog.getInt(self, 'Ширина изображения', 'Укажите желаемую ширину изображения.', 1280, min=1)
@@ -539,6 +650,9 @@ class Window(QWidget):
         width, height = width[0], height[0]
         self.clearFile(width=width, height=height)
 
+    # Экспорт проекта в файл. Сначала все слои деактивируются, чтобы не отображались вспомогательные элементы.
+    # Затем содержимое слоёв отрисовывается на self.finalImage, потом self.finalImage сохраняется в файл нужного формата
+    # Слот сигнала FileToolbar.exportButton.clicked
     @pyqtSlot()
     def exportFile(self):
         filePath = QFileDialog.getSaveFileName(self, 'Экспорт проекта в изображение',
@@ -560,19 +674,23 @@ class Window(QWidget):
             item.widget().render(qp)
         self.finalImage.save(filePath)
 
+    # Слот сигнала self.projectOpenForm.signals.requestAccepted. Скрывает все формы, открывает проект
     @pyqtSlot(str, str, dict)
-    def openCloudFile(self, username, password, projectData):
+    def openCloudFile(self, username: str, password: str, projectData: dict):
         self.loginForm.hide()
         self.changePasswordForm.hide()
         self.projectOpenForm.hide()
-        self.login(username, password, dict())
+        # self.login(username, password, dict())
         self.openFile(projectData)
 
+    # Слот сигнала self.LoginForm.signals.openForm. Перенаправяет пользователя в форму ChangePasswordForm
     @pyqtSlot()
     def openChangePasswordForm(self):
         self.loginForm.hide()
         self.changePasswordForm.show()
 
+    # Слот сигнала self.signals.loginForm.requestAccepted. Запоминает данные, по которым удалось войти, обновляет форму
+    # self.projectOpenForm
     @pyqtSlot(str, str, dict)
     def login(self, username, password, projectData):
         self.username = username
@@ -581,11 +699,14 @@ class Window(QWidget):
         self.projectOpenForm.setLoginData(self.username, self.password)
         self.loginForm.hide()
 
+    # Слот сигнала FileToolbar.cloudOpenButton.clicked. Открывает формы для входа и выбора файла
     @pyqtSlot()
     def openCloudForms(self):
         self.projectOpenForm.show()
         self.loginForm.show()
 
+    # Слот сигнала FileToolbar.cloudSaveButton.clicked. Спрашивает у пользователся имя проекта и отправляет запрос на
+    # сохранение, уведомляет пользователя о результате через модальные диалоги
     @pyqtSlot()
     def saveCloudFile(self):
         if self.username == '':
@@ -610,6 +731,7 @@ class Window(QWidget):
                         'Введён неверный пароль.', QMessageBox.Ok).exec()
 
 
+# Запуск программы
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = Window()
