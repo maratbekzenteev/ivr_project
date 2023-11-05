@@ -89,7 +89,7 @@ class Window(QWidget):
         self.layers = LayerList(self)
         self.preview = QGraphicsView(self)
         self.tab = QTabWidget(self)
-        self.tab.setMaximumHeight(240)
+        self.tab.setMaximumHeight(256)
 
         self.tab.addTab(BitmapToolbar(), "Холст")
         self.tab.widget(0).signals.valueChanged.connect(self.updateBitmapLayerState)

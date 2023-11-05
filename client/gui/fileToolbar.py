@@ -67,14 +67,14 @@ class FileToolbar(QWidget):
         self.cloudOpenButton.setIcon(QIcon('../static/cloudOpenFile.png'))
 
         self.undoButton = QToolButton()
-        self.undoButton.setText('Убрать последнюю линию')
+        self.undoButton.setText('Убрать линию')
         self.undoButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.undoButton.setAutoRaise(True)
         self.undoButton.setIconSize(QSize(64, 64))
         self.undoButton.setIcon(QIcon('../static/undo.png'))
 
         self.redoButton = QToolButton()
-        self.redoButton.setText('Вернуть убранную линию')
+        self.redoButton.setText('Вернуть линию')
         self.redoButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.redoButton.setAutoRaise(True)
         self.redoButton.setIconSize(QSize(64, 64))
