@@ -3,7 +3,7 @@ import json
 import requests
 from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QGraphicsView, QTabWidget,
                              QWidget, QGridLayout, QShortcut, QFileDialog, QInputDialog, QMessageBox)
-from PyQt5.QtGui import QFont, QKeySequence, QColor, QImage, QPainter
+from PyQt5.QtGui import QFont, QKeySequence, QColor, QImage, QPainter, QIcon
 from PyQt5.QtCore import Qt, pyqtSlot, QByteArray, QBuffer, QIODevice, QSize
 from bitmapLayer import BitmapLayer
 from gridLayer import GridLayer
@@ -31,7 +31,7 @@ from client.src.forms import LoginForm, ChangePasswordForm, ProjectOpenForm
 
 # Адрес сервера, к которому программа подключается для получения и сохранения проектов пользователя.
 # (!) Оканчивается на прямой слеш ('/')
-SERVER_ADDRESS = ''
+SERVER_ADDRESS = 'http://127.0.0.1:5000/'
 
 
 # Класс Window - класс главного окна программы.
@@ -57,7 +57,9 @@ class Window(QWidget):
     # Инициализация графических элементов и атрибутов, подключение сигналов к слотам
     def __init__(self) -> None:
         super().__init__()
-        self.setFont(QFont("Verdana", 12))
+        self.setFont(QFont('Verdana', 12))
+        self.setWindowTitle('Grid Raster Image Editor')
+        self.setWindowIcon(QIcon('../static/pen3.png'))
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -115,6 +117,8 @@ class Window(QWidget):
         self.tab.addTab(TextToolbar(), "Текст")
         self.tab.widget(5).signals.valueChanged.connect(self.updateTextLayerState)
 
+        self.setTabsInvisible()
+
         self.layers.signals.activated.connect(self.activateLayer)
         self.layers.signals.deactivated.connect(self.deactivateLayer)
         self.layers.signals.shown.connect(self.showLayer)
@@ -138,6 +142,14 @@ class Window(QWidget):
         self.layers.newStaticLayer('Сетка', 1024)
 
         self.show()
+
+    # Функция скрытия всех вкладок работы со слоями. Вызывается, когда работа ни с одним типом слоёв невозможна,
+    # (например, когда ни один слой не активен)
+    def setTabsInvisible(self) -> None:
+        self.tab.setTabVisible(0, False)
+        self.tab.setTabVisible(3, False)
+        self.tab.setTabVisible(4, False)
+        self.tab.setTabVisible(5, False)
 
     # Слот для self.zoomInShortcut, увеличивает масштаб отображения в рабочей области в 5/4 раза
     @pyqtSlot()
@@ -267,7 +279,7 @@ class Window(QWidget):
     # Активация слоя по индексу. Слот для self.layers.signals.activated.
     # Снимает выделение с ранее выделенного слоя (если таковой был), делает активным текущий выделенный слой,
     # передаёт состояние панели инструментов на случай, если её состояние поменяли, пока активным был другой слой,
-    # обновляет переменную self.currentLayer
+    # обновляет переменную self.currentLayer. Обновляет состояние доступных вкладок
     @pyqtSlot(int)
     def activateLayer(self, index: int) -> None:
         if self.currentLayer != -1:
@@ -278,14 +290,23 @@ class Window(QWidget):
 
         self.scene.items()[index].widget().active = True
         self.currentLayer = index
+        self.setTabsInvisible()
 
         if isinstance(self.scene.items()[self.currentLayer].widget(), BitmapLayer):
+            self.tab.setTabVisible(0, True)
+            self.tab.setCurrentIndex(0)
             self.updateBitmapLayerState()
         elif isinstance(self.scene.items()[self.currentLayer].widget(), ImageLayer):
+            self.tab.setTabVisible(3, True)
+            self.tab.setCurrentIndex(3)
             self.updateImageToolbarState()
         elif isinstance(self.scene.items()[self.currentLayer].widget(), ShapeLayer):
+            self.tab.setTabVisible(4, True)
+            self.tab.setCurrentIndex(4)
             self.updateShapeToolbarState()
         elif isinstance(self.scene.items()[self.currentLayer].widget(), TextLayer):
+            self.tab.setTabVisible(5, True)
+            self.tab.setCurrentIndex(5)
             self.scene.items()[self.currentLayer].widget().storeZValue(self.scene.items()[self.currentLayer].zValue())
             self.scene.items()[self.currentLayer].setZValue(1023)
             self.updateTextToolbarState()
@@ -299,6 +320,8 @@ class Window(QWidget):
             self.scene.items()[self.currentLayer].setZValue(self.scene.items()[self.currentLayer].widget()
                                                             .previousZValue)
 
+        self.tab.setCurrentIndex(1)
+        self.setTabsInvisible()
         self.scene.items()[index].widget().active = False
         self.currentLayer = -1
 
@@ -315,6 +338,10 @@ class Window(QWidget):
     # Удаление слоя по индексу. Слот для self.layers.signals.deleted
     @pyqtSlot(int)
     def deleteLayer(self, index):
+        if self.currentLayer == index:
+            self.tab.setCurrentIndex(1)
+            self.setTabsInvisible()
+
         deletedItem = self.scene.items()[index]
         self.scene.removeItem(deletedItem)
 
@@ -680,7 +707,7 @@ class Window(QWidget):
         self.loginForm.hide()
         self.changePasswordForm.hide()
         self.projectOpenForm.hide()
-        # self.login(username, password, dict())
+        self.login(username, password, dict())
         self.openFile(projectData)
 
     # Слот сигнала self.LoginForm.signals.openForm. Перенаправяет пользователя в форму ChangePasswordForm
@@ -692,7 +719,7 @@ class Window(QWidget):
     # Слот сигнала self.signals.loginForm.requestAccepted. Запоминает данные, по которым удалось войти, обновляет форму
     # self.projectOpenForm
     @pyqtSlot(str, str, dict)
-    def login(self, username, password, projectData):
+    def login(self, username: str, password: str, projectData: dict):
         self.username = username
         self.password = password
         self.loginForm.setLoginData(self.username, self.password)
@@ -719,7 +746,7 @@ class Window(QWidget):
         self.saveFile(variableDump=True, projectName=projectName)
         self.fileDump['username'] = self.username
         self.fileDump['password'] = self.password
-        response = requests.post(SERVER_ADDRESS + 'save_project', data=self.fileDump).json()
+        response = requests.post(SERVER_ADDRESS + 'save_project', json=self.fileDump).json()
         if response['status'] == 'ok':
             QMessageBox(QMessageBox.Information, 'Сохранение проекта',
                         'Проект успешно сохранен.', QMessageBox.Ok).exec()

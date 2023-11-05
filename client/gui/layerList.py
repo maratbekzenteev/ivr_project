@@ -315,7 +315,7 @@ class LayerList(QWidget):
     @pyqtSlot(int)
     def deleteLayer(self, index: int) -> None:
         if self.parent.currentLayer == index:
-            self.parent.currentLayer = -1
+            self.signals.deactivated.emit(index)
         elif self.parent.currentLayer > index:
             self.parent.currentLayer -= 1
 

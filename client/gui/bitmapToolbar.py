@@ -55,7 +55,9 @@ class BitmapToolbar(QWidget):
 
         self.tool = 'none'
         self.toolSelector = ToolSelector('Кисть', 'Ручка', 'Карандаш', 'Ластик', 'Отрезок', 'Прямоугольник', 'Эллипс', 'Заливка')
-        self.toolSelector.setIcons(*(['tmp_icon.png'] * 8))
+        self.toolSelector.setIcons('../static/brush2.png', '../static/pen2.png', '../static/pencil2.png',
+                                   '../static/eraser.png', '../static/drawLine.png', '../static/drawRect.png',
+                                   '../static/drawOval.png', '../static/bucket.png')
         self.toolSelector.setStates('brsh', 'pen', 'penc', 'ersr', 'line', 'rect', 'oval', 'fill')
         self.toolSelector.signals.valueChanged.connect(self.updateValues)
 

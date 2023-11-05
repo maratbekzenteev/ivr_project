@@ -54,15 +54,15 @@ class ShapeToolbar(QWidget):
         self.widthSlider.valueChanged.connect(self.updateValues)
 
         self.tool = 'none'
-        self.toolSelector = ToolSelector('Привязать', 'Передвинуть')
+        self.toolSelector = ToolSelector('Привязать к сетке', 'Передвинуть')
         self.toolSelector.setStates('grid', 'ofst')
-        self.toolSelector.setIcons(*(['tmp_icon.png'] * 2))
+        self.toolSelector.setIcons('../static/grid2.png', '../static/offset.png')
         self.toolSelector.signals.valueChanged.connect(self.updateValues)
 
         self.shape = 'none'
         self.shapeSelector = ToolSelector('Отрезок', 'Прямоугольник', 'Эллипс')
         self.shapeSelector.setStates('line', 'rect', 'oval')
-        self.shapeSelector.setIcons(*(['tmp_icon.png'] * 3))
+        self.shapeSelector.setIcons('../static/line.png', '../static/rect.png', '../static/oval.png')
         self.shapeSelector.signals.valueChanged.connect(self.updateValues)
 
         self.layout.addWidget(QLabel('Заливка'), 0, 0)

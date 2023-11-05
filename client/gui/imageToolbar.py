@@ -44,12 +44,15 @@ class ImageToolbar(QWidget):
         self.alignmentSelector = ToolSelector('Заполнить', 'Слева сверху', 'Сверху', 'Справа сверху', 'Слева',
                                               'По центру', 'Справа', 'Слева снизу', 'Снизу', 'Справа снизу')
         self.alignmentSelector.setStates('fill', 'lt', 'top', 'rt', 'left', 'cntr', 'rght', 'lb', 'bttm', 'rb')
-        self.alignmentSelector.setIcons(*(['tmp_icon.png'] * 10))
+        self.alignmentSelector.setIcons('../static/fill.png', '../static/topLeft.png', '../static/top.png',
+                                        '../static/topRight.png', '../static/left.png', '../static/center.png',
+                                        '../static/right.png', '../static/bottomLeft.png', '../static/bottom.png',
+                                        '../static/bottomRight.png')
         self.alignmentSelector.signals.valueChanged.connect(self.updateValues)
 
-        self.toolSelector = ToolSelector('Привязать', 'Передвинуть')
+        self.toolSelector = ToolSelector('Привязать к сетке', 'Передвинуть')
         self.toolSelector.setStates('grid', 'ofst')
-        self.toolSelector.setIcons(*(['tmp_icon.png'] * 2))
+        self.toolSelector.setIcons('../static/grid2.png', '../static/offset.png')
         self.toolSelector.signals.valueChanged.connect(self.updateValues)
 
         self.size = 100
@@ -67,7 +70,7 @@ class ImageToolbar(QWidget):
         self.selectFileButton.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.selectFileButton.setAutoRaise(True)
         self.selectFileButton.setIconSize(QSize(64, 64))
-        self.selectFileButton.setIcon(QIcon('../static/tmp_icon.png'))
+        self.selectFileButton.setIcon(QIcon('../static/openFile.png'))
 
         self.layout.addWidget(self.selectFileButton, 0, 0)
         self.layout.addWidget(self.toolSelector, 0, 1)

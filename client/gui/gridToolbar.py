@@ -62,7 +62,7 @@ class GridToolbar(QWidget):
         self.vButtons.addButton(self.vPercentButton)
         self.vButtons.buttonClicked.connect(self.updateVIndentType)
 
-        self.layout.addWidget(QLabel('Вертикальные прямые'), 0, 0, 1, 2, Qt.AlignLeft)
+        self.layout.addWidget(QLabel('Вертикальные прямые'), 0, 0, 1, 2, Qt.AlignJustify)
         self.layout.addWidget(self.vList, 1, 0, 5, 1, Qt.AlignLeft)
         self.layout.addWidget(self.vSpinBox, 1, 1)
         self.layout.addWidget(self.vPercentButton, 2, 1)
@@ -90,7 +90,7 @@ class GridToolbar(QWidget):
         self.hButtons.addButton(self.hPercentButton)
         self.hButtons.buttonClicked.connect(self.updateHIndentType)
 
-        self.layout.addWidget(QLabel('Горизонтальные прямые'), 0, 2, 1, 2, Qt.AlignLeft)
+        self.layout.addWidget(QLabel('Горизонтальные прямые'), 0, 2, 1, 2, Qt.AlignJustify)
         self.layout.addWidget(self.hList, 1, 2, 5, 1, Qt.AlignLeft)
         self.layout.addWidget(self.hSpinBox, 1, 3)
         self.layout.addWidget(self.hPercentButton, 2, 3)

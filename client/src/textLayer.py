@@ -54,16 +54,16 @@ class TextLayer(QWidget):
         self.textEdit = QTextEdit(self)
         self.textEdit.setGeometry(0, 0, 0, 0)
         self.textEdit.setFrameShape(QFrame.NoFrame)
-        self.textEdit.setStyleSheet("background: rgba(0,0,0,0%)")
+        self.textEdit.setStyleSheet('background: rgba(0,0,0,0%)')
 
         self.color = QColor(0, 0, 0)
-        self.font = "Verdana"
+        self.font = 'Verdana'
         self.size = 32
         self.fontWeight = QFont.Weight.Normal
         self.italic = False
         self.underline = False
         self.alignment = Qt.AlignLeft
-        self.textEdit.setFont(QFont("Verdana", 32))
+        self.textEdit.setFont(QFont('Verdana', 32))
         self.textEdit.setFontPointSize(32)
         self.textEdit.cursorPositionChanged.connect(self.updateFromNewCursorPosition)
 

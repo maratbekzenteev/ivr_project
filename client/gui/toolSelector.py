@@ -49,7 +49,7 @@ class ToolSelector(QWidget):
     # Присвоение кнопкам иконок, названия которых перечислены в аргументах в порядке следованя кнопок слева направо
     def setIcons(self, *icons) -> None:
         for i in range(len(icons)):
-            self.layout.itemAtPosition(0, i).widget().setIcon(QIcon('../static/tmp_icon.png'))
+            self.layout.itemAtPosition(0, i).widget().setIcon(QIcon(icons[i]))
 
     # Обновление состояния при нажатии одной из кнопок. Слот сигнала self.layout.itemAtPosition(0, i).widget().clicked
     # Сообщает сигнал valueChanged

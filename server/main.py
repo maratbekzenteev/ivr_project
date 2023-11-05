@@ -182,8 +182,7 @@ def changePassword():
 
     hashGenerator = hashlib.new('sha256')
     hashGenerator.update(bytes(newPassword, 'utf-8'))
-    userCollection.find_one_and_replace({'username': username}, {'username': username,
-                                                                 'password': hashGenerator.hexdigest()})
+    userCollection.update_many({'username': username}, {'$set': {'password': hashGenerator.hexdigest()}})
 
     projectCollection = db['projects']
     projectCollection.update_many({'username': username}, {'$set': {'password': hashGenerator.hexdigest()}})
@@ -195,3 +194,4 @@ def changePassword():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+    client.close()

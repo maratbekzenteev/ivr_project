@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QSpinBox, QFontComboBox, QToolButton, QGridLayout
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor, QFont, QIcon
 from PyQt5.QtCore import pyqtSlot, Qt
 from client.gui.colorPreview import ColorPreview
 from client.gui.toolSelector import ToolSelector
@@ -66,21 +66,21 @@ class TextToolbar(QWidget):
 
         self.fontWeight = QFont.Normal
         self.fontWeightButton = QToolButton()
-        self.fontWeightButton.setText('Ж')
+        self.fontWeightButton.setIcon(QIcon('../static/demiBold.png'))
         self.fontWeightButton.setAutoRaise(True)
         self.fontWeightButton.setCheckable(True)
         self.fontWeightButton.clicked.connect(self.updateValues)
 
         self.italic = False
         self.italicButton = QToolButton()
-        self.italicButton.setText('К')
+        self.italicButton.setIcon(QIcon('../static/italic.png'))
         self.italicButton.setAutoRaise(True)
         self.italicButton.setCheckable(True)
         self.italicButton.clicked.connect(self.updateValues)
 
         self.underline = False
         self.underlineButton = QToolButton()
-        self.underlineButton.setText('П')
+        self.underlineButton.setIcon(QIcon('../static/underline.png'))
         self.underlineButton.setAutoRaise(True)
         self.underlineButton.setCheckable(True)
         self.underlineButton.clicked.connect(self.updateValues)
@@ -95,6 +95,8 @@ class TextToolbar(QWidget):
         }
         self.alignmentSelector = ToolSelector('Слева', 'По центру', 'Справа', 'Заполнить')
         self.alignmentSelector.setStates('left', 'cntr', 'rght', 'fill')
+        self.alignmentSelector.setIcons('../static/textLeft.png', '../static/textCenter.png',
+                                        '../static/textRight.png', '../static/textFill.png')
         self.alignmentSelector.signals.valueChanged.connect(self.updateValues)
 
         self.layout.addWidget(self.fontComboBox, 0, 0)

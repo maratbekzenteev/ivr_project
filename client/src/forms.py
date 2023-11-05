@@ -38,9 +38,9 @@ class AbstractForm(QWidget):
 
         self.usernameField = QLineEdit()
         self.passwordField = QLineEdit()
-        self.passwordField.setEchoMode(QLineEdit.PasswordEchoOnEdit)
+        self.passwordField.setEchoMode(QLineEdit.Password)
         self.newPasswordField = QLineEdit()
-        self.newPasswordField.setEchoMode(QLineEdit.PasswordEchoOnEdit)
+        self.newPasswordField.setEchoMode(QLineEdit.Password)
         self.message = QLabel()
 
         self.layout.addWidget(QLabel('Имя пользователя'), 0, 0)
@@ -95,13 +95,15 @@ class LoginForm(AbstractForm):
             return
 
         if self.sender().text() == 'Войти':
-            response = requests.post(self.address + 'login', data={'username': self.usernameField.text(),
+            response = requests.post(self.address + 'login', json={'username': self.usernameField.text(),
                                                                    'password': self.passwordField.text()}).json()
         else:
-            response = requests.post(self.address + 'add_user', data={'username': self.usernameField.text(),
+            response = requests.post(self.address + 'add_user', json={'username': self.usernameField.text(),
                                                                       'password': self.passwordField.text()}).json()
 
         self.updateMessage(response['status'])
+        QMessageBox(QMessageBox.Information, 'Вход', self.messageTextFromStatus[response['status']],
+                    QMessageBox.Ok).exec()
         if response['status'] == 'ok':
             self.signals.requestAccepted.emit(self.usernameField.text(), self.passwordField.text(), dict())
 
@@ -132,12 +134,14 @@ class ChangePasswordForm(AbstractForm):
     @pyqtSlot()
     def submitRequest(self):
         response = requests.post(self.address + 'change_password',
-                                 data={'username': self.usernameField.text(),
+                                 json={'username': self.usernameField.text(),
                                        'oldPassword': self.passwordField.text(),
                                        'newPassword': self.newPasswordField.text()}).json()
         self.updateMessage(response['status'])
+        QMessageBox(QMessageBox.Information, 'Смена пароля', self.messageTextFromStatus[response['status']],
+                    QMessageBox.Ok).exec()
         if response['status'] == 'ok':
-            self.signals.requestAccepted.emit(self.usernameField.text(), self.passwordField.text(), dict())
+            self.signals.requestAccepted.emit(self.usernameField.text(), self.newPasswordField.text(), dict())
 
 
 # Класс формы выбора открываемого проекта пользователем. (!)Не унаследован от AbstractForm. Набор сигналов - FormSignals
@@ -182,14 +186,14 @@ class ProjectOpenForm(QWidget):
     # уведомляется о причине неуспеха в модальном диалоге
     def updateProjectNames(self) -> None:
         self.projectList.clear()
-        response = requests.post(self.address + 'get_project_names', data={'username': self.username,
+        response = requests.post(self.address + 'get_project_names', json={'username': self.username,
                                                                            'password': self.password}).json()
         if response['status'] == 'incorrectUsername':
             QMessageBox(QMessageBox.Information, 'Открытие проекта',
                         'Введено неверное имя пользователя.', QMessageBox.Ok).exec()
             return
         if response['status'] == 'incorrectPassword':
-            QMessageBox(QMessageBox.Information, 'Сохранение проекта',
+            QMessageBox(QMessageBox.Information, 'Открытие проекта',
                         'Введён неверный пароль.', QMessageBox.Ok).exec()
             return
         if response['status'] != 'ok':
@@ -206,7 +210,7 @@ class ProjectOpenForm(QWidget):
             return
 
         response = requests.post(self.address + 'get_project',
-                                 data={'username': self.username,
+                                 json={'username': self.username,
                                        'password': self.password,
                                        'name': self.projectList.currentItem().text().rstrip()}).json()
         if response['status'] == 'incorrectUsername':
@@ -214,9 +218,9 @@ class ProjectOpenForm(QWidget):
                         'Введено неверное имя пользователя.', QMessageBox.Ok).exec()
             return
         if response['status'] == 'incorrectPassword':
-            QMessageBox(QMessageBox.Information, 'Сохранение проекта',
+            QMessageBox(QMessageBox.Information, 'Открытие проекта',
                         'Введён неверный пароль.', QMessageBox.Ok).exec()
             return
         if response['status'] != 'ok':
             return
-        self.signals.requestAccepted.emit(self.username, self.password, response['data'])
+        self.signals.requestAccepted.emit(self.username, self.password, response)
