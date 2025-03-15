@@ -45,13 +45,13 @@ class LayerList(QWidget):
         self.outerLayout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.outerLayout)
 
-        self.newBitmapButton = QPushButton('')
+        self.newBitmapButton = QPushButton('+Холст')
         self.newBitmapButton.setToolTip('Новый холст')
-        self.newImageButton = QPushButton('')
+        self.newImageButton = QPushButton('+Картинка')
         self.newImageButton.setToolTip('Новый слой-картинка')
-        self.newShapeButton = QPushButton('')
+        self.newShapeButton = QPushButton('+Фигура')
         self.newShapeButton.setToolTip('Новый фигурный слой')
-        self.newTextButton = QPushButton('')
+        self.newTextButton = QPushButton('+Текст')
         self.newTextButton.setToolTip('Новый текстовый слой')
 
         self.newBitmapButton.clicked.connect(self.parent.addBitmapLayer)
